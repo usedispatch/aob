@@ -36,8 +36,8 @@ app = typer.Typer(
 console = Console()
 
 def get_repo_path() -> Path:
-    """Get the path to the AO Counter repository"""
-    return Path.home() / ".aox" / "ao-counter"
+    """Get the path to the AO Counter repository in current directory"""
+    return Path.cwd() / "ao-counter"
 
 
 @app.command()
@@ -46,11 +46,19 @@ def init(
         False,
         "--force", "-f",
         help="Force re-initialization even if repository exists"
+    ),
+    path: str = typer.Option(
+        None,
+        "--path", "-p", 
+        help="Custom installation path (defaults to current directory)"
     )
 ):
     """Initialize by cloning the AO Counter repository"""
     repo_url = "https://github.com/usedispatch/ao-counter"
-    target_dir = get_repo_path()
+    if path:
+        target_dir = Path(path) / "ao-counter"
+    else:
+        target_dir = get_repo_path()
     print(target_dir)
     with console.status("[bold blue]Initializing AO Counter...") as status:
         if target_dir.exists() and not force:
