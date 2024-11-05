@@ -8,6 +8,7 @@ from rich import print as rprint
 from typing import Optional
 from pathlib import Path
 import time
+import shutil
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn
 
 TOOL_VERSION = "0.0.1"
@@ -52,7 +53,7 @@ def init(force: bool = typer.Option(False, "--force", "-f", help="Force re-initi
                 return
             else:
                 with console.status("[yellow]Cleaning existing installation...", spinner="dots"):
-                    import shutil
+                    
                     shutil.rmtree(target_dir)
 
         # Create directory structure
@@ -217,6 +218,106 @@ def deploy(
         ))
         raise typer.Exit(1)
     
+
+@app.command(name="test")
+def test(
+    component: str = typer.Argument(..., help="Component to test (process)")
+):
+    """Run tests for AO Counter components (process)"""
+    if component != "process":
+        console.print(Panel.fit(
+            "[red]Invalid component. Currently only 'process' testing is supported",
+            title="❌ Error",
+            border_style="red"
+        ))
+        raise typer.Exit(1)
+
+    # Check if we're in a valid AO Counter project directory
+    package_json = Path.cwd() / "package.json"
+    if not package_json.exists():
+        console.print(Panel.fit(
+            "[red]No package.json found in current directory.\n"
+            "Make sure you're in the root directory of an AO Counter project.",
+            title="❌ Error",
+            border_style="red"
+        ))
+        raise typer.Exit(1)
+
+    try:
+        console.print("\n[bold blue]Running AO Counter Process Tests[/bold blue]")
+        
+        # Create process with pseudo-terminal to preserve colors and show output in real-time
+        import pty
+        import os
+        
+        # Create a pseudo-terminal
+        master, slave = pty.openpty()
+        
+        # Start the process
+        process = subprocess.Popen(
+            "yarn process:test",
+            shell=True,
+            stdin=slave,
+            stdout=slave,
+            stderr=slave,
+            text=True,
+            preexec_fn=os.setsid,
+            env={**os.environ, 'FORCE_COLOR': '1'}
+        )
+        
+        # Close slave fd
+        os.close(slave)
+        
+        try:
+            while True:
+                try:
+                    # Read from master fd and display output in real-time
+                    data = os.read(master, 1024).decode()
+                    if data:
+                        print(data, end='', flush=True)
+                except OSError:
+                    break
+                    
+
+            
+        finally:
+            # Cleanup
+            os.close(master)
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+
+            if process.returncode != 0:
+                raise subprocess.CalledProcessError(
+                    process.returncode,
+                    "yarn process:test"
+                )
+
+        # Show success message if we get here
+        console.print(Panel.fit(
+            "[green bold]✓ Process tests completed successfully!",
+            title="Tests Complete", 
+            border_style="green"
+        ))
+
+    except subprocess.CalledProcessError:
+        console.print(Panel.fit(
+            "[red]Tests failed",
+            title="❌ Error",
+            border_style="red"
+        ))
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(Panel.fit(
+            f"[red]An error occurred: {str(e)}",
+            title="❌ Error",
+            border_style="red"
+        ))
+        raise typer.Exit(1)
+
+
 
 @app.command(name="dev")
 def dev():
