@@ -218,6 +218,79 @@ def deploy(
         raise typer.Exit(1)
     
 
+@app.command(name="dev")
+def dev():
+    """Start the AO Counter frontend development server"""
+    package_json = Path.cwd() / "package.json"
+    if not package_json.exists():
+        console.print(Panel.fit(
+            "[red]No package.json found in current directory.\n"
+            "Make sure you're in the root directory of an AO Counter project.",
+            title="❌ Error",
+            border_style="red"
+        ))
+        raise typer.Exit(1)
+
+    try:
+        console.print("\n[bold blue]Starting AO Counter Frontend Development Server[/bold blue]")
+        
+        # Create process with pseudo-terminal to preserve colors
+        import pty
+        import os
+        
+        # Create a pseudo-terminal
+        master, slave = pty.openpty()
+        
+        # Start the process
+        process = subprocess.Popen(
+            "yarn frontend:dev",
+            shell=True,
+            stdin=slave,
+            stdout=slave,
+            stderr=slave,
+            text=True,
+            preexec_fn=os.setsid,
+            env={**os.environ, 'FORCE_COLOR': '1'}
+        )
+        
+        # Close slave fd
+        os.close(slave)
+        
+        try:
+            while True:
+                try:
+                    # Read from master fd
+                    data = os.read(master, 1024).decode()
+                    if data:
+                        # Print directly to preserve formatting
+                        print(data, end='', flush=True)
+                except OSError:
+                    break
+                    
+        except KeyboardInterrupt:
+            console.print(Panel.fit(
+                "[yellow]Development server stopped by user",
+                title="Server Stopped",
+                border_style="yellow"
+            ))
+            
+        finally:
+            # Cleanup
+            os.close(master)
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                
+    except Exception as e:
+        console.print(Panel.fit(
+            f"[red]An error occurred: {str(e)}",
+            title="❌ Error",
+            border_style="red"
+        ))
+        raise typer.Exit(1)
+
 @app.command(name="build")
 def build(
     component: str = typer.Argument(..., help="Component to build (process/frontend)")
