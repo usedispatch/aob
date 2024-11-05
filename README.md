@@ -6,5 +6,5 @@ CLI tool for starting on building AO apps.
 
 ```bash
 poetry install
-poetry run aox
+aox init
 ```
