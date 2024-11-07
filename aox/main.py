@@ -1,6 +1,7 @@
 """CLI tool for managing and deploying AO Counter applications."""
 
 import os
+import pty
 import shutil
 import subprocess
 import time
@@ -18,6 +19,15 @@ from rich.progress import (
 )
 
 TOOL_VERSION = "0.0.1"
+VERBOSE_MODE = False
+
+
+def log_verbose(message: str):
+    """Log a message if verbose mode is enabled."""
+    console.print("[dim]Verbose mode is enabled[/dim]")
+    if VERBOSE_MODE:
+        console.print(f"[dim]{message}[/dim]")
+
 
 app = typer.Typer(
     name="aox",
@@ -25,6 +35,15 @@ app = typer.Typer(
     add_completion=False,
 )
 console = Console()
+
+
+@app.callback()
+def main(
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output")
+):
+    """Handle the main entry point for the CLI."""
+    global VERBOSE_MODE
+    VERBOSE_MODE = verbose
 
 
 def get_repo_path() -> Path:
@@ -52,11 +71,8 @@ def init(
 ):
     """Initialize a new AO Counter project."""
     repo_url = "https://github.com/usedispatch/ao-counter"
-    if path:
-        target_dir = Path(path) / "ao-counter"
-    else:
-        target_dir = get_repo_path()
-
+    target_dir = Path(path) if path else Path.cwd()  # Use path directly or current dir
+    log_verbose(f"Target directory: {target_dir}")
     # Show installation header with path info
     console.print("\n[bold blue]AO Counter Installation[/bold blue]")
     console.print("└─ [dim]Repository:[/dim] [cyan]{}[/cyan]".format(repo_url))
@@ -66,11 +82,11 @@ def init(
 
     try:
         # Check existing installation
-        if target_dir.exists():
+        if target_dir.exists() and any(target_dir.iterdir()):
             if not force:
                 console.print(
                     Panel.fit(
-                        "[yellow]Installation already exists at this location\n"
+                        "[yellow]This directory is not empty\n"
                         "Use --force to reinstall",
                         title="⚠️ Warning",
                     )
@@ -83,7 +99,7 @@ def init(
                     shutil.rmtree(target_dir)
 
         # Create directory structure
-        target_dir.parent.mkdir(parents=True, exist_ok=True)
+        target_dir.mkdir(parents=True, exist_ok=True)
 
         progress_columns = [
             SpinnerColumn(),
@@ -94,12 +110,12 @@ def init(
         ]
 
         with Progress(*progress_columns, expand=True) as progress:
-            # Clone repository
+            # Clone repository into a temporary directory
             clone_task = progress.add_task("Cloning repository...", total=100)
+            temp_dir = target_dir / "temp_ao_counter"
 
-            # Start git clone process
             process = subprocess.Popen(
-                ["git", "clone", repo_url, str(target_dir)],
+                ["git", "clone", repo_url, str(temp_dir)],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
@@ -115,6 +131,13 @@ def init(
                 raise subprocess.CalledProcessError(
                     process.returncode, "git clone", error
                 )
+
+            # Move contents from temp directory to target directory
+            for item in temp_dir.iterdir():
+                shutil.move(str(item), str(target_dir))
+
+            # Remove the temporary directory
+            shutil.rmtree(temp_dir)
 
             # Root yarn install
             root_install_task = progress.add_task(
@@ -165,13 +188,16 @@ def init(
             Panel.fit(
                 "[green bold]✓ AO Counter installed successfully!\n\n"
                 "[white]Next steps:[/white]\n"
-                f"1. cd into the repository: [cyan]cd {target_dir}[/cyan]\n",
+                "1. Run [cyan]aox dev[/cyan] to start the frontend dev server\n"
+                "2. Run [cyan]aox deploy process[/cyan] to deploy the process\n"
+                "3. Run [cyan]aox test process[/cyan] to run the process tests",
                 title="Installation Complete",
                 border_style="green",
             )
         )
 
     except subprocess.CalledProcessError as e:
+        log_verbose(f"Subprocess error: {e.stderr}")
         console.print(
             Panel.fit(
                 f"[red]Failed to clone repository\nError: {e.stderr}",
@@ -181,6 +207,7 @@ def init(
         )
         raise typer.Exit(1)
     except Exception as e:
+        log_verbose(f"An error occurred: {str(e)}")
         console.print(
             Panel.fit(
                 f"[red]An error occurred: {str(e)}",
@@ -221,26 +248,57 @@ def deploy(
 
     try:
         if component == "process":
-            # Process deployment logic
             console.print("\n[bold blue]Deploying AO Counter Process[/bold blue]")
-            command = "process:deploy"
+            command = "deploy:process"
             success_message = "Process deployed successfully!"
         else:
-            # Frontend deployment logic
             console.print("\n[bold blue]Deploying AO Counter Frontend[/bold blue]")
-            command = "frontend:build"
+            command = "build:frontend"
             success_message = "Frontend built successfully!"
 
-        with console.status(f"[bold blue]Running {command}...", spinner="dots"):
-            # Run the deployment command
-            process = subprocess.run(["yarn", command], capture_output=True, text=True)
+        # Create a pseudo-terminal
+        master, slave = pty.openpty()
+
+        # Start the process
+        process = subprocess.Popen(
+            f"yarn {command}",
+            shell=True,
+            stdin=slave,
+            stdout=slave,
+            stderr=slave,
+            text=True,
+            preexec_fn=os.setsid,
+            env={**os.environ, "FORCE_COLOR": "1"},
+        )
+
+        # Close slave fd
+        os.close(slave)
+
+        try:
+            while True:
+                try:
+                    # Read from master fd and display output in real-time
+                    data = os.read(master, 1024).decode()
+                    if data:
+                        print(data, end="", flush=True)
+                except OSError:
+                    break
+
+        finally:
+            # Cleanup
+            os.close(master)
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
 
             if process.returncode != 0:
                 raise subprocess.CalledProcessError(
-                    process.returncode, f"yarn {command}", process.stderr
+                    process.returncode, f"yarn {command}"
                 )
 
-        # Show success message
+        # Show success message if we get here
         console.print(
             Panel.fit(
                 f"[green bold]✓ {success_message}",
@@ -249,16 +307,18 @@ def deploy(
             )
         )
 
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
+        log_verbose("Deployment failed")
         console.print(
             Panel.fit(
-                f"[red]Deployment failed\nError: {e.stderr}",
+                "[red]Deployment failed",
                 title="❌ Error",
                 border_style="red",
             )
         )
         raise typer.Exit(1)
     except Exception as e:
+        log_verbose(f"An error occurred: {str(e)}")
         console.print(
             Panel.fit(
                 f"[red]An error occurred: {str(e)}",
@@ -298,15 +358,33 @@ def test(component: str = typer.Argument(..., help="Component to test (process)"
     try:
         console.print("\n[bold blue]Running AO Counter Process Tests[/bold blue]")
 
-        import os
-        import pty
+        test_dir = Path.cwd() / "test"
+        node_modules = test_dir / "node_modules"
+
+        if not node_modules.exists():
+            console.print("\n[yellow]Installing test dependencies...[/yellow]")
+            os.chdir(test_dir)
+
+            # Run yarn install in test directory
+            process = subprocess.run(
+                ["yarn", "install"], capture_output=True, text=True
+            )
+
+            if process.returncode != 0:
+                raise subprocess.CalledProcessError(
+                    process.returncode, "yarn install", process.stderr
+                )
+
+            # Change back to project root
+            os.chdir(test_dir.parent)
+            console.print("[green]✓ Test dependencies installed[/green]\n")
 
         # Create a pseudo-terminal
         master, slave = pty.openpty()
 
         # Start the process
         process = subprocess.Popen(
-            "yarn process:test",
+            "yarn test:process",
             shell=True,
             stdin=slave,
             stdout=slave,
@@ -353,11 +431,13 @@ def test(component: str = typer.Argument(..., help="Component to test (process)"
         )
 
     except subprocess.CalledProcessError:
+        log_verbose("Tests failed")
         console.print(
             Panel.fit("[red]Tests failed", title="❌ Error", border_style="red")
         )
         raise typer.Exit(1)
     except Exception as e:
+        log_verbose(f"An error occurred: {str(e)}")
         console.print(
             Panel.fit(
                 f"[red]An error occurred: {str(e)}",
@@ -397,7 +477,7 @@ def dev():
 
         # Start the process
         process = subprocess.Popen(
-            "yarn frontend:dev",
+            "yarn dev:frontend",
             shell=True,
             stdin=slave,
             stdout=slave,
@@ -422,6 +502,7 @@ def dev():
                     break
 
         except KeyboardInterrupt:
+            log_verbose("Development server stopped by user")
             console.print(
                 Panel.fit(
                     "[yellow]Development server stopped by user",
@@ -437,9 +518,11 @@ def dev():
             try:
                 process.wait(timeout=5)
             except subprocess.TimeoutExpired:
+                log_verbose("Development server timed out")
                 process.kill()
 
     except Exception as e:
+        log_verbose(f"An error occurred: {str(e)}")
         console.print(
             Panel.fit(
                 f"[red]An error occurred: {str(e)}",
@@ -468,6 +551,7 @@ def build(
     # Check if we're in a valid AO Counter project directory
     package_json = Path.cwd() / "package.json"
     if not package_json.exists():
+        log_verbose("No package.json found in current directory")
         console.print(
             Panel.fit(
                 "[red]No package.json found in current directory.\n"
@@ -482,12 +566,12 @@ def build(
         if component == "process":
             # Process deployment logic
             console.print("\n[bold blue]Building AO Counter Process[/bold blue]")
-            command = "process:build"
+            command = "build:process"
             success_message = "Process built successfully!"
         else:
             # Frontend deployment logic
             console.print("\n[bold blue]Deploying AO Counter Frontend[/bold blue]")
-            command = "frontend:build"
+            command = "build:frontend"
             success_message = "Frontend built successfully!"
 
         with console.status(f"[bold blue]Running {command}...", spinner="dots"):
@@ -509,6 +593,7 @@ def build(
         )
 
     except subprocess.CalledProcessError as e:
+        log_verbose(f"Build failed: {e.stderr}")
         console.print(
             Panel.fit(
                 f"[red]Deployment failed\nError: {e.stderr}",
@@ -518,6 +603,7 @@ def build(
         )
         raise typer.Exit(1)
     except Exception as e:
+        log_verbose(f"An error occurred: {str(e)}")
         console.print(
             Panel.fit(
                 f"[red]An error occurred: {str(e)}",
