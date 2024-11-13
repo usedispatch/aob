@@ -29,7 +29,7 @@ def log_verbose(message: str):
 
 
 app = typer.Typer(
-    name="aox",
+    name="aoc",
     help="CLI tool for Scaffolding,Deploying and Generating AO Apps.",
     add_completion=False,
 )
@@ -52,8 +52,8 @@ def get_repo_path() -> Path:
 
 @app.command(name="version")
 def version():
-    """Display the current version of AOX CLI."""
-    console.print(f"AOX CLI version {TOOL_VERSION}")
+    """Display the current version of AOC CLI."""
+    console.print(f"AOC CLI version {TOOL_VERSION}")
 
 
 @app.command(name="init")
@@ -88,10 +88,11 @@ def init(
     try:
         # Check existing installation
         if target_dir.exists() and any(target_dir.iterdir()):
-            with console.status(
-                "[yellow]Cleaning existing installation...", spinner="dots"
-            ):
-                shutil.rmtree(target_dir)
+            show_error_panel(
+                "Directory not empty",
+                f"The target directory '{target_dir.absolute()}' is not empty. Please choose an empty directory for installation."
+            )
+            raise typer.Exit(1)
 
         # Create directory structure
         target_dir.mkdir(parents=True, exist_ok=True)
@@ -181,9 +182,9 @@ def init(
         show_success_panel(
             "[green bold]✓ AO Counter installed successfully!\n\n"
             "[white]Next steps:[/white]\n"
-            "1. Run [cyan]aox dev[/cyan] to start the frontend dev server\n"
-            "2. Run [cyan]aox deploy process[/cyan] to deploy the process\n"
-            "3. Run [cyan]aox test process[/cyan] to run the process tests",
+            "1. Run [cyan]aoc dev[/cyan] to start the frontend dev server\n"
+            "2. Run [cyan]aoc deploy process[/cyan] to deploy the process\n"
+            "3. Run [cyan]aoc test process[/cyan] to run the process tests",
             "Installation Complete",
         )
 
@@ -332,18 +333,32 @@ def test(component: str = typer.Argument(..., help="Component to test (process)"
 
 
 @app.command(name="dev")
-def dev():
-    """Start the AO Counter frontend development server."""
+def dev(
+    component: str = typer.Argument(
+        "frontend",
+        help="Component to run in development mode (currently only supports 'frontend')",
+    )
+):
+    """Start the AO Counter development server for the specified component."""
+    # Validate component
+    if component.lower() != "frontend":
+        show_error_panel(
+            "Currently only the 'frontend' component is supported for development mode.\n"
+            "Usage: aoc dev frontend"
+        )
+        return
+
     package_json = Path.cwd() / "package.json"
     if not package_json.exists():
         show_error_panel(
             "No package.json found in current directory.\n"
             "Make sure you're in the root directory of an AO Counter project."
         )
+        return
 
     try:
         console.print(
-            "\n[bold blue]Starting AO Counter Frontend Development Server[/bold blue]"
+            f"\n[bold blue]Starting AO Counter {component.title()} Development Server[/bold blue]"
         )
 
         # Create a pseudo-terminal
@@ -359,9 +374,10 @@ def dev():
                         print(data, end="", flush=True)
                 except OSError:
                     break
-
         except KeyboardInterrupt:
-            show_error_panel("Development server stopped by user")
+            # show_error_panel("Development server stopped by user")
+            print("\n")
+            pass
 
         finally:
             # Cleanup
@@ -429,6 +445,100 @@ def build(
         show_error_panel(f"An error occurred: {str(e)}")
 
 
+
+
+@app.command(name="generate")
+def generate(
+    component: str = typer.Argument(..., help="Component to generate (test)"),
+    model: str = typer.Option("anthropic","--model","-m",help="Model to use for generation (currently only supports 'anthropic')")
+):
+    """Generate code for AO Counter components (test)."""
+    if component != "test":
+        show_error_panel(
+            "Invalid component. Currently only 'test' generation is supported"
+        )
+
+        # Check if we're in a valid AO Counter project directory
+    package_json = Path.cwd() / "package.json"
+    if not package_json.exists():
+        show_error_panel(
+            "No package.json found in current directory.\n"
+            "Make sure you're in the root directory of an AO Counter project."
+        )
+
+    try:
+        console.print("\n[bold blue]Generating Tests using LLM[/bold blue]")
+        
+        # Read Lua code from output.lua
+        lua_code = read_lua_code()
+        console.print(lua_code);
+        if not lua_code:
+            show_error_panel("No Lua code found in output.lua")
+            
+        # Read existing test code
+        existing_tests = read_existing_tests()
+        if not existing_tests:
+            show_error_panel("No existing test code found in test/src/index.ts")
+        console.print(existing_tests);
+        
+        # Generate system prompt
+        # prompt = generate_system_prompt(lua_code, existing_tests)
+        
+        # # Call LLM to generate tests
+        # with console.status("[bold blue]Generating tests...", spinner="dots"):
+        #     generated_tests = generate_test_code(prompt, model)
+            
+        # if not generated_tests:
+        #     show_error_panel("Failed to generate tests")
+            
+        # # Write generated tests
+        # write_test_code(generated_tests)
+        
+        # Show success message
+        show_success_panel(
+            "[green bold]✓ Tests generated successfully!\n\n"
+            "[white]Next steps:[/white]\n"
+            "1. Review the generated tests in [cyan]test/src/index.ts[/cyan]\n"
+            "2. Run [cyan]aoc test process[/cyan] to execute the tests",
+            "Test Generation Complete"
+        )
+
+    except Exception as e:
+        show_error_panel(f"An error occurred: {str(e)}")
+
+
+    
+def read_lua_code() -> str:
+    """Read and parse Lua code from output.lua."""
+    try:
+        lua_file = Path.cwd() / "process" / "build" / "output.lua"
+        if not lua_file.exists():
+            return None
+            
+        with open(lua_file, "r") as f:
+            content = f.read()
+            
+        # TODO: Add logic to extract only handlers and functions
+        return content
+        
+    except Exception as e:
+        log_verbose(f"Error reading Lua code: {str(e)}")
+        return None
+    
+def read_existing_tests() -> str:
+    """Read existing test code from test/src/index.ts."""
+    try:
+        test_file = Path.cwd() / "test" / "src" / "index.ts"
+        if not test_file.exists():
+            return ""
+            
+        with open(test_file, "r") as f:
+            return f.read()
+            
+    except Exception as e:
+        log_verbose(f"Error reading existing tests: {str(e)}")
+        return ""
+
 def show_success_panel(message: str, title: str = "Complete"):
     """Display a success panel with consistent formatting."""
     console.print(
@@ -476,3 +586,13 @@ def run_command_with_pty(command: str) -> subprocess.Popen:
 
 if __name__ == "__main__":
     app()
+
+
+
+# # Work with Claude 3.5 Sonnet on your repo
+# export ANTHROPIC_API_KEY=your-key-goes-here
+# aider
+
+# # Work with GPT-4o on your repo
+# export OPENAI_API_KEY=your-key-goes-here
+# aider 

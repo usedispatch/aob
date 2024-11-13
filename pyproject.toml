@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "aox"
+name = "aoc"
 version = "0.1.0"
 description = "CLI tool for managing and running AO Counter"
-authors = ["Your Name <your.email@example.com>"]
+authors = ["Pratik <pratik@arweave.org>"]
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.2.0"
@@ -30,7 +30,7 @@ ell-ai = "^0.0.14"
 openai = "^1.54.1"
 
 [tool.poetry.scripts]
-aox = "aox.main:app"
+aoc = "aoc.main:app"
 
 [build-system]
 requires = ["poetry-core"]
