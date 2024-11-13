@@ -17,10 +17,14 @@ from rich.progress import (
     TextColumn,
     TimeRemainingColumn,
 )
-
+import ell
+import anthropic
 TOOL_VERSION = "0.0.1"
 VERBOSE_MODE = False
 
+
+ell.init(verbose=True)
+client = anthropic.Anthropic()
 
 def log_verbose(message: str):
     """Log a message if verbose mode is enabled."""
@@ -480,6 +484,8 @@ def generate(
         if not existing_tests:
             show_error_panel("No existing test code found in test/src/index.ts")
         console.print(existing_tests);
+    
+        generate_test_code(lua_code, existing_tests)
         
         # Generate system prompt
         # prompt = generate_system_prompt(lua_code, existing_tests)
@@ -538,6 +544,63 @@ def read_existing_tests() -> str:
     except Exception as e:
         log_verbose(f"Error reading existing tests: {str(e)}")
         return ""
+    
+
+# TODO (Pratik): make sure this function does not runs if there are no tests for the lua code maybe we add a sample lua code and tests as system prompt.
+@ell.simple(model='claude-3-5-sonnet-20241022', client=client,max_tokens=2000)
+def generate_test_code(lua_code: str, existing_tests: str) -> str:
+    """ generate TypeScript tests.
+    CONTEXT:You are an expert test generator. 
+    Your task is to analyse Lua code and
+    - Tests should focus on handlers
+    - Tests should be comprehensive but not duplicate existing tests
+    - Tests should follow TypeScript and existing test patterns """
+    
+    prompt = f"""
+
+First, examine the following Lua code:
+
+<lua_code>
+{lua_code}
+</lua_code>
+
+Now, review the existing TypeScript tests:
+
+<existing_tests>
+{existing_tests}
+</existing_tests>
+
+Your goal is to generate new TypeScript tests only for new handlers in the Lua code provided. Follow these guidelines:
+
+1. Focus exclusively on testing new handlers in the Lua code that don't have corresponding tests.
+2. Ensure new tests are comprehensive and follow TypeScript and existing test patterns.
+3. Maintain the existing test file structure.
+4. Do not generate any tests for handlers that already have tests.
+
+Before generating new tests, carefully analyze the Lua code and existing tests. Wrap your analysis in <code_analysis> tags:
+
+1. List all handlers in the Lua code, numbering them.
+2. List all handlers in the existing tests, numbering them.
+3. Compare the two lists and identify new handlers that need testing.
+4. For each new handler, outline its functionality and potential test cases.
+
+After your analysis, generate only the new test code in TypeScript format. Do not include any explanations, comments, or anything other than the TypeScript test code itself. If no new tests are needed, output "None".
+
+Provide your output in the following format:
+
+<new_tests>
+[Insert only the new TypeScript test code here, or "None" if no new tests are needed]
+</new_tests>
+
+Remember to analyze the existing tests carefully to avoid duplication and ensure you're only adding tests for new handlers."""
+
+    return prompt
+
+@ell.simple(model="claude-3-5-sonnet-20241022",client=client,max_tokens=200)
+def testing_prompt(name: str) -> str:
+    """You are a helpful assistant.""" # System prompt
+    return f"Say hello to {name}! in Slangish way" # User prompt
+
 
 def show_success_panel(message: str, title: str = "Complete"):
     """Display a success panel with consistent formatting."""
