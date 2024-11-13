@@ -1,11 +1,11 @@
-# AOX CLI
+# AOC CLI
 
-A command-line interface tool for scaffolding, deploying, and managing AO Counter applications.
+A command-line interface tool for scaffolding, deploying, and managing AO applications.
 
 ## Installation
 
 ```bash
-pip install aox
+pip install aoc
 ```
 
 ## Commands
@@ -13,7 +13,7 @@ pip install aox
 ### Initialize Project
 
 ```bash
-aox init
+aoc init
 ```
 
 Clones and sets up a new AO Counter project in the current directory. Optionally specify a custom installation path.
@@ -21,18 +21,18 @@ Clones and sets up a new AO Counter project in the current directory. Optionally
 ### Build Components
 
 ```bash
-aox build <component>
+aoc build <component>
 ```
 
 Build AO Counter components:
 
-- `aox build process` - Build the AO process
-- `aox build frontend` - Build the frontend application
+- `aoc build process` - Build the AO process
+- `aoc build frontend` - Build the frontend application
 
 ### Development Mode
 
 ```bash
-aox dev frontend
+aoc dev frontend
 ```
 
 Start the frontend development server.
@@ -40,17 +40,17 @@ Start the frontend development server.
 ### Deploy Components
 
 ```bash
-aox deploy <component>
+aoc deploy <component>
 ```
 
 Deploy AO Counter components:
 
-- `aox deploy process` - Deploy the AO process
+- `aoc deploy process` - Deploy the AO process
 
 ### Run Tests
 
 ```bash
-aox test process
+aoc test process
 ```
 
 Run tests for the AO process component.
@@ -58,7 +58,7 @@ Run tests for the AO process component.
 ### Version
 
 ```bash
-aox version
+aoc version
 ```
 
 Display the current version of AOX CLI.
