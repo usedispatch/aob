@@ -485,7 +485,34 @@ def generate(
             show_error_panel("No existing test code found in test/src/index.ts")
         console.print(existing_tests);
     
-        generate_test_code(lua_code, existing_tests)
+        prompt_response = generate_test_code(lua_code, existing_tests)
+
+        try:
+            analysis_start = prompt_response.find("<code_analysis>")
+            analysis_end = prompt_response.find("</code_analysis>") 
+            if analysis_start != -1 and analysis_end != -1:
+                analysis = prompt_response[analysis_start + len("<code_analysis>"):analysis_end].strip()
+                # Display analysis in CLI
+                console.print("\n[bold blue]Code Analysis[/bold blue]")
+                console.print(Panel.fit(analysis, border_style="blue"))
+        except Exception as e:
+            show_error_panel(f"An error occurred in code analysis: {str(e)}")
+
+
+        try:
+            generated_tests_start = prompt_response.find("<new_tests>")
+            generated_tests_end = prompt_response.find("</new_tests>")
+            if generated_tests_start != -1 and generated_tests_end != -1:
+                generated_tests = prompt_response[generated_tests_start + len("<new_tests>"):generated_tests_end].strip()
+                console.print(f"\n[bold blue]Generated Tests[/bold blue]")
+                console.print(Panel.fit(generated_tests, border_style="blue"))
+                if generated_tests == "None":
+                    show_error_panel("No new tests generated")
+                else:
+                    write_test_code(generated_tests)
+        except Exception as e:
+            show_error_panel(f"An error occurred in generated tests: {str(e)}")
+        
         
         # Generate system prompt
         # prompt = generate_system_prompt(lua_code, existing_tests)
@@ -546,18 +573,13 @@ def read_existing_tests() -> str:
         return ""
     
 
-# TODO (Pratik): make sure this function does not runs if there are no tests for the lua code maybe we add a sample lua code and tests as system prompt.
+
+
 @ell.simple(model='claude-3-5-sonnet-20241022', client=client,max_tokens=2000)
 def generate_test_code(lua_code: str, existing_tests: str) -> str:
-    """ generate TypeScript tests.
-    CONTEXT:You are an expert test generator. 
-    Your task is to analyse Lua code and
-    - Tests should focus on handlers
-    - Tests should be comprehensive but not duplicate existing tests
-    - Tests should follow TypeScript and existing test patterns """
-    
     prompt = f"""
-
+Your task is to create new, comprehensive tests for handlers in the provided Lua code without duplicating existing tests. 
+You are an expert test generator specializing in analyzing Lua code and generating corresponding TypeScript tests. 
 First, examine the following Lua code:
 
 <lua_code>
@@ -646,6 +668,12 @@ def run_command_with_pty(command: str) -> subprocess.Popen:
     os.close(slave)
     return process, master
 
+
+def write_test_code(generated_tests: str):
+    """Write generated tests to test/src/index.ts."""
+    test_file = Path.cwd() / "test" / "src" / "index.ts"
+    with open(test_file, "w") as f:
+        f.write(generated_tests)
 
 if __name__ == "__main__":
     app()
