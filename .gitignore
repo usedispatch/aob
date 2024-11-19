@@ -2,3 +2,4 @@ ao-counter
 .venv
 .vscode
 aoc/__pycache__
+aoc/prompts/__pycache__

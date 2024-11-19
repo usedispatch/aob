@@ -55,6 +55,20 @@ aoc test process
 
 Run tests for the AO process component.
 
+```bash
+aoc generate test [--model MODEL]
+```
+
+Generate test code for AO Counter components:
+
+- Currently supports test generation only
+- Optional `--model` or `-m` flag to specify the AI model:
+  - `anthropic` - Use Anthropic's Claude model
+  - `openai` - Use OpenAI's GPT model
+  - `auto` (default) - Automatically selects based on available API keys
+
+Requires either `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` environment variable to be set.
+
 ### Version
 
 ```bash

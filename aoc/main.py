@@ -19,6 +19,8 @@ from rich.progress import (
 )
 import ell
 import anthropic
+
+from aoc.prompts.generate_test import antrophic_generate_test_code, openai_generate_test_code
 TOOL_VERSION = "0.0.1"
 VERBOSE_MODE = False
 
@@ -454,7 +456,7 @@ def build(
 @app.command(name="generate")
 def generate(
     component: str = typer.Argument(..., help="Component to generate (test)"),
-    model: str = typer.Option("anthropic","--model","-m",help="Model to use for generation (currently only supports 'anthropic')")
+     model: str = typer.Option("auto", "--model", "-m", help="Model to use for generation ('anthropic' or 'openai', defaults to auto)")
 ):
     """Generate code for AO Counter components (test)."""
     if component != "test":
@@ -471,11 +473,30 @@ def generate(
         )
 
     try:
-        console.print("\n[bold blue]Generating Tests using LLM[/bold blue]")
+            # Determine which API key is available
+        anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+        openai_key = os.getenv("OPENAI_API_KEY")
+
+        if model == "auto":
+            if anthropic_key:
+                selected_model = "anthropic"
+            elif openai_key:
+                selected_model = "openai"
+            else:
+                show_error_panel(
+                    "No API keys found. Please set either ANTHROPIC_API_KEY or OPENAI_API_KEY environment variable."
+                )
+        else:
+            selected_model = model
+            if selected_model == "anthropic" and not anthropic_key:
+                show_error_panel("ANTHROPIC_API_KEY environment variable not set")
+            elif selected_model == "openai" and not openai_key:
+                show_error_panel("OPENAI_API_KEY environment variable not set")
+
+        console.print(f"\n[bold blue]Generating Tests using {selected_model.upper()}[/bold blue]")
         
         # Read Lua code from output.lua
         lua_code = read_lua_code()
-        console.print(lua_code);
         if not lua_code:
             show_error_panel("No Lua code found in output.lua")
             
@@ -483,20 +504,24 @@ def generate(
         existing_tests = read_existing_tests()
         if not existing_tests:
             show_error_panel("No existing test code found in test/src/index.ts")
-        console.print(existing_tests);
     
-        prompt_response = generate_test_code(lua_code, existing_tests)
+    
+        # prompt_response = antrophic_generate_test_code(lua_code, existing_tests)
+        if selected_model == "anthropic":
+            prompt_response = antrophic_generate_test_code(lua_code, existing_tests)
+        else:
+            prompt_response = openai_generate_test_code(lua_code, existing_tests)
 
-        try:
-            analysis_start = prompt_response.find("<code_analysis>")
-            analysis_end = prompt_response.find("</code_analysis>") 
-            if analysis_start != -1 and analysis_end != -1:
-                analysis = prompt_response[analysis_start + len("<code_analysis>"):analysis_end].strip()
-                # Display analysis in CLI
-                console.print("\n[bold blue]Code Analysis[/bold blue]")
-                console.print(Panel.fit(analysis, border_style="blue"))
-        except Exception as e:
-            show_error_panel(f"An error occurred in code analysis: {str(e)}")
+        # try:
+        #     analysis_start = prompt_response.find("<code_analysis>")
+        #     analysis_end = prompt_response.find("</code_analysis>") 
+        #     if analysis_start != -1 and analysis_end != -1:
+        #         analysis = prompt_response[analysis_start + len("<code_analysis>"):analysis_end].strip()
+        #         # Display analysis in CLI
+        #         console.print("\n[bold blue]Code Analysis[/bold blue]")
+        #         console.print(Panel.fit(analysis, border_style="blue"))
+        # except Exception as e:
+        #     show_error_panel(f"An error occurred in code analysis: {str(e)}")
 
 
         try:
@@ -510,6 +535,7 @@ def generate(
                     show_error_panel("No new tests generated")
                 else:
                     write_test_code(generated_tests)
+                    console.print("[green]✓ Tests written to test/src/index.ts[/green]")
         except Exception as e:
             show_error_panel(f"An error occurred in generated tests: {str(e)}")
         
@@ -540,6 +566,29 @@ def generate(
         show_error_panel(f"An error occurred: {str(e)}")
 
 
+def write_test_code(generated_tests: str):
+    """Write generated tests to test/src/index.ts."""
+    test_file = Path.cwd() / "test" / "src" / "index.ts"
+    
+    # Read existing content
+    with open(test_file, "r") as f:
+        content = f.read()
+    
+    # Find the last closing brace of the describe block
+    last_brace_index = content.rindex("});")
+    
+    # Insert new tests before the closing brace
+    new_content = (
+        content[:last_brace_index] + 
+        "\n  " + 
+        generated_tests.replace("\n", "\n  ") + 
+        "\n" +
+        content[last_brace_index:]
+    )
+    
+    # Write back to file
+    with open(test_file, "w") as f:
+        f.write(new_content)
     
 def read_lua_code() -> str:
     """Read and parse Lua code from output.lua."""
@@ -572,57 +621,6 @@ def read_existing_tests() -> str:
         log_verbose(f"Error reading existing tests: {str(e)}")
         return ""
     
-
-
-
-@ell.simple(model='claude-3-5-sonnet-20241022', client=client,max_tokens=2000)
-def generate_test_code(lua_code: str, existing_tests: str) -> str:
-    prompt = f"""
-Your task is to create new, comprehensive tests for handlers in the provided Lua code without duplicating existing tests. 
-You are an expert test generator specializing in analyzing Lua code and generating corresponding TypeScript tests. 
-First, examine the following Lua code:
-
-<lua_code>
-{lua_code}
-</lua_code>
-
-Now, review the existing TypeScript tests:
-
-<existing_tests>
-{existing_tests}
-</existing_tests>
-
-Your goal is to generate new TypeScript tests only for new handlers in the Lua code provided. Follow these guidelines:
-
-1. Focus exclusively on testing new handlers in the Lua code that don't have corresponding tests.
-2. Ensure new tests are comprehensive and follow TypeScript and existing test patterns.
-3. Maintain the existing test file structure.
-4. Do not generate any tests for handlers that already have tests.
-
-Before generating new tests, carefully analyze the Lua code and existing tests. Wrap your analysis in <code_analysis> tags:
-
-1. List all handlers in the Lua code, numbering them.
-2. List all handlers in the existing tests, numbering them.
-3. Compare the two lists and identify new handlers that need testing.
-4. For each new handler, outline its functionality and potential test cases.
-
-After your analysis, generate only the new test code in TypeScript format. Do not include any explanations, comments, or anything other than the TypeScript test code itself. If no new tests are needed, output "None".
-
-Provide your output in the following format:
-
-<new_tests>
-[Insert only the new TypeScript test code here, or "None" if no new tests are needed]
-</new_tests>
-
-Remember to analyze the existing tests carefully to avoid duplication and ensure you're only adding tests for new handlers."""
-
-    return prompt
-
-@ell.simple(model="claude-3-5-sonnet-20241022",client=client,max_tokens=200)
-def testing_prompt(name: str) -> str:
-    """You are a helpful assistant.""" # System prompt
-    return f"Say hello to {name}! in Slangish way" # User prompt
-
 
 def show_success_panel(message: str, title: str = "Complete"):
     """Display a success panel with consistent formatting."""
@@ -669,11 +667,6 @@ def run_command_with_pty(command: str) -> subprocess.Popen:
     return process, master
 
 
-def write_test_code(generated_tests: str):
-    """Write generated tests to test/src/index.ts."""
-    test_file = Path.cwd() / "test" / "src" / "index.ts"
-    with open(test_file, "w") as f:
-        f.write(generated_tests)
 
 if __name__ == "__main__":
     app()
