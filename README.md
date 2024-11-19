@@ -1,6 +1,10 @@
 # AOC CLI
 
+[![Status](https://img.shields.io/badge/Status-Alpha-yellow.svg)]()
+
 A command-line interface tool for scaffolding, deploying, and managing AO applications.
+
+> **Note**: This CLI is currently in alpha stage and under active development. Features may change or break between versions.
 
 ## Installation
 
