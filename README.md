@@ -55,6 +55,8 @@ aoc test process
 
 Run tests for the AO process component.
 
+### Generate Tests
+
 ```bash
 aoc generate test [--model MODEL]
 ```
@@ -68,6 +70,8 @@ Generate test code for AO Counter components:
   - `auto` (default) - Automatically selects based on available API keys
 
 Requires either `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` environment variable to be set.
+
+You can set the env using `export ANTHROPIC_API_KEY=<key>` or `export OPENAI_API_KEY=<key>`.
 
 ### Version
 
