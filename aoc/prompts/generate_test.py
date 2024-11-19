@@ -3,9 +3,6 @@ import anthropic
 
 client = anthropic.Anthropic()
 
-
-import anthropic
-
 def antrophic_generate_test_code(lua_code: str,existing_tests: str) :
     client = anthropic.Anthropic()
     message = client.messages.create(

@@ -183,6 +183,12 @@ def init(
                 raise subprocess.CalledProcessError(
                     process.returncode, "yarn install", error
                 )
+            
+            git_dir = target_dir / ".git"
+            if git_dir.exists():
+                
+                log_verbose(f"Removing .git directory: {git_dir}")
+                shutil.rmtree(git_dir)
 
         # Show success message
         show_success_panel(
@@ -193,6 +199,8 @@ def init(
             "3. Run [cyan]aoc test process[/cyan] to run the process tests",
             "Installation Complete",
         )
+
+        
 
     except subprocess.CalledProcessError as e:
         show_error_panel("Failed to clone repository", e.stderr)
