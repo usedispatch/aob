@@ -20,7 +20,7 @@ from rich.progress import (
 import ell
 import anthropic
 
-from aoc.prompts.generate_test import antrophic_generate_test_code, openai_generate_test_code
+from aob.prompts.generate_test import antrophic_generate_test_code, openai_generate_test_code
 TOOL_VERSION = "0.0.1"
 VERBOSE_MODE = False
 
@@ -35,7 +35,7 @@ def log_verbose(message: str):
 
 
 app = typer.Typer(
-    name="aoc",
+    name="aob",
     help="CLI tool for Scaffolding,Deploying and Generating AO Apps.",
     add_completion=False,
 )
@@ -58,8 +58,8 @@ def get_repo_path() -> Path:
 
 @app.command(name="version")
 def version():
-    """Display the current version of AOC CLI."""
-    console.print(f"AOC CLI version {TOOL_VERSION}")
+    """Display the current version of AOB CLI."""
+    console.print(f"AOB CLI version {TOOL_VERSION}")
 
 
 @app.command(name="init")
@@ -194,9 +194,9 @@ def init(
         show_success_panel(
             "[green bold]✓ AO Counter installed successfully!\n\n"
             "[white]Next steps:[/white]\n"
-            "1. Run [cyan]aoc dev[/cyan] to start the frontend dev server\n"
-            "2. Run [cyan]aoc deploy process[/cyan] to deploy the process\n"
-            "3. Run [cyan]aoc test process[/cyan] to run the process tests",
+            "1. Run [cyan]aob dev[/cyan] to start the frontend dev server\n"
+            "2. Run [cyan]aob deploy process[/cyan] to deploy the process\n"
+            "3. Run [cyan]aob test process[/cyan] to run the process tests",
             "Installation Complete",
         )
 
@@ -358,7 +358,7 @@ def dev(
     if component.lower() != "frontend":
         show_error_panel(
             "Currently only the 'frontend' component is supported for development mode.\n"
-            "Usage: aoc dev frontend"
+            "Usage: aob dev frontend"
         )
         return
 
@@ -566,7 +566,7 @@ def generate(
             "[green bold]✓ Tests generated successfully!\n\n"
             "[white]Next steps:[/white]\n"
             "1. Review the generated tests in [cyan]test/src/index.ts[/cyan]\n"
-            "2. Run [cyan]aoc test process[/cyan] to execute the tests",
+            "2. Run [cyan]aob test process[/cyan] to execute the tests",
             "Test Generation Complete"
         )
 

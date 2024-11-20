@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "aoc"
-version = "0.1.0"
+name = "aob"
+version = "0.2.0"
 description = "CLI tool for managing and running AO Counter"
 authors = ["Pratik <pratik@arweave.org>"]
 
@@ -30,7 +30,7 @@ ell-ai = {extras = ["anthropic"], version = "^0.0.14"}
 openai = "^1.54.1"
 
 [tool.poetry.scripts]
-aoc = "aoc.main:app"
+aob = "aob.main:app"
 
 [build-system]
 requires = ["poetry-core"]
