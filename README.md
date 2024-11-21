@@ -44,6 +44,8 @@ Start the frontend development server.
 ### Deploy Components
 
 ```bash
+# First, set your wallet environment variable
+export WALLET_JSON="$(cat ~/.aos.json)"
 aoc deploy <component>
 ```
 
