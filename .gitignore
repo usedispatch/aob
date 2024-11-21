@@ -1,5 +1,6 @@
 ao-counter
 .venv
 .vscode
-aoc/__pycache__
-aoc/prompts/__pycache__
+aob/__pycache__
+aob/prompts/__pycache__
+dist

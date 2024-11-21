@@ -1,4 +1,4 @@
-"""CLI tool for managing and deploying AO Counter applications."""
+"""CLI tool for managing and deploying AO  applications."""
 
 import os
 import pty
@@ -25,8 +25,10 @@ TOOL_VERSION = "0.0.1"
 VERBOSE_MODE = False
 
 
-ell.init(verbose=True)
+ell.init(verbose=False)
 client = anthropic.Anthropic()
+
+
 
 def log_verbose(message: str):
     """Log a message if verbose mode is enabled."""
@@ -36,7 +38,7 @@ def log_verbose(message: str):
 
 app = typer.Typer(
     name="aob",
-    help="CLI tool for Scaffolding,Deploying and Generating AO Apps.",
+    help="AO Builder - Your AO Development Assistant\n\nThis tool helps you:\n1. Create new AO applications\n2. Test existing AO applications\n3. Deploy processes to the AO network\n4. Generate code using AI assistance",
     add_completion=False,
 )
 console = Console()
@@ -192,16 +194,14 @@ def init(
 
         # Show success message
         show_success_panel(
-            "[green bold]✓ AO Counter installed successfully!\n\n"
-            "[white]Next steps:[/white]\n"
+            "[green bold]✓ AO Starter app installed successfully!\n\n"
+            "[white]Getting Started:[/white]\n"
             "1. Run [cyan]aob dev[/cyan] to start the frontend dev server\n"
             "2. Run [cyan]aob deploy process[/cyan] to deploy the process\n"
-            "3. Run [cyan]aob test process[/cyan] to run the process tests",
+            "3. Run [cyan]aob test process[/cyan] to run the process tests\n"
+            "4. Run [cyan]aob generate test[/cyan] to generate new tests",
             "Installation Complete",
         )
-
-        
-
     except subprocess.CalledProcessError as e:
         show_error_panel("Failed to clone repository", e.stderr)
     except Exception as e:
@@ -477,7 +477,7 @@ def generate(
     if not package_json.exists():
         show_error_panel(
             "No package.json found in current directory.\n"
-            "Make sure you're in the root directory of an AO Counter project."
+            "Make sure you're in the root directory of an AO project."
         )
 
     try:
@@ -677,6 +677,7 @@ def run_command_with_pty(command: str) -> subprocess.Popen:
 
 
 if __name__ == "__main__":
+    show_welcome_message()
     app()
 
 

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aob"
-version = "0.2.0"
+version = "0.2.3"
 description = "CLI tool for managing and running AO Counter"
 authors = ["Pratik <pratik@arweave.org>"]
 
@@ -31,6 +31,10 @@ openai = "^1.54.1"
 
 [tool.poetry.scripts]
 aob = "aob.main:app"
+aob-welcome = "aob.entry:show_welcome_message"
+
+[tool.poetry.plugins."poetry.application.plugin"]
+post_install = "aob.entry:show_welcome"
 
 [build-system]
 requires = ["poetry-core"]
