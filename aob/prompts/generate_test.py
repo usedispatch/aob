@@ -26,13 +26,9 @@ def antrophic_generate_test_code(lua_code: str,existing_tests: str) :
         }
     ]
     )
-    print(message.content[0].text)
+    
     return message.content[0].text
 
-
-
-# Replace placeholders like {{LUA_CODE}} with real values,
-# because the SDK does not support variables.
 
 
 

@@ -538,7 +538,7 @@ def generate(
             if generated_tests_start != -1 and generated_tests_end != -1:
                 generated_tests = prompt_response[generated_tests_start + len("<new_tests>"):generated_tests_end].strip()
                 console.print(f"\n[bold blue]Generated Tests[/bold blue]")
-                console.print(Panel.fit(generated_tests, border_style="blue"))
+                # console.print(Panel.fit(generated_tests, border_style="blue"))
                 if generated_tests == "None":
                     show_error_panel("No new tests generated")
                 else:
