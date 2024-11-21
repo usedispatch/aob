@@ -210,11 +210,20 @@ def init(
 
 @app.command(name="deploy")
 def deploy(
-    component: str = typer.Argument(..., help="Component to deploy (process/frontend)")
+    component: str = typer.Argument(..., help="Component to deploy (process/frontend)"),
+    wallet: str = typer.Option(None, "--wallet", "-w", help="Path to wallet file for deployment")
 ):
     """Deploy AO Counter components (process or frontend)."""
     if component not in ["process", "frontend"]:
         show_error_panel("Invalid component. Must be either 'process' or 'frontend'")
+
+    if not os.path.exists(wallet):
+        show_error_panel(
+            f"Wallet file not found: {wallet}\n"
+            "Please provide a valid wallet path using --wallet option"
+        )
+
+    
 
     # Check if we're in a valid AO Counter project directory
     package_json = Path.cwd() / "package.json"
@@ -225,16 +234,53 @@ def deploy(
         )
     try:
         if component == "process":
+            try:
+                with open(wallet, 'r') as f:
+                    wallet_content = f.read()
+                os.environ['WALLET_JSON'] = wallet_content
+                log_verbose(f"Wallet loaded from: {wallet}")
+            except Exception as e:
+                show_error_panel("Failed to read wallet file", str(e))
             console.print("\n[bold blue]Deploying AO Counter Process[/bold blue]")
             command = "deploy:process"
             success_message = "Process deployed successfully!"
+            process, master = run_command_with_pty(f"yarn {command}")
         else:
-            console.print("\n[bold blue]Deploying AO Counter Frontend[/bold blue]")
-            command = "build:frontend"
-            success_message = "Frontend built successfully!"
+            console.print("\n[bold blue]Deploying AO Application Frontend[/bold blue]")
+            build_command = "yarn build"
+            console.print("[yellow]Building frontend...[/yellow]")
+            build_process = subprocess.run(build_command, shell=True, capture_output=True, text=True)
+            if build_process.returncode != 0:
+                raise subprocess.CalledProcessError(build_process.returncode, build_command, build_process.stderr)
+            
+            if not wallet:
+                show_error_panel(
+                    "Wallet path is required for frontend deployment.\n"
+                    "Usage: aob deploy frontend --wallet <path-to-wallet>"
+                )
 
-        # Create a pseudo-terminal
-        process, master = run_command_with_pty(f"yarn {command}")
+            deploy_command = f"arkb deploy ./dist --wallet {wallet}"
+            console.print("[yellow]Deploying to Arweave...[/yellow]")
+            process, master = run_command_with_pty(deploy_command)
+            try:
+                while True:
+                    try:
+                        # Read from master fd
+                        data = os.read(master, 1024).decode()
+                        if data:
+                            print(data, end="", flush=True)
+                        # Check if confirmation is required
+                        if "upload (Y/n)" in data:
+                            # Write 'y' and newline to the process
+                            os.write(master, b'y\n')
+                    except OSError:
+                        break
+            finally:
+                os.close(master)
+                process.terminate()
+            success_message = "Frontend deployed successfully to Arweave!"
+
+        
 
         try:
             while True:
@@ -257,7 +303,7 @@ def deploy(
 
             if process.returncode != 0:
                 raise subprocess.CalledProcessError(
-                    process.returncode, f"yarn {command}"
+                    process.returncode, f"Deployment failed"
                 )
 
         # Show success message if we get here
