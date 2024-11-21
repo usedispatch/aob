@@ -1,6 +1,10 @@
 # AOC CLI
 
+[![Status](https://img.shields.io/badge/Status-Alpha-yellow.svg)]()
+
 A command-line interface tool for scaffolding, deploying, and managing AO applications.
+
+> **Note**: This CLI is currently in alpha stage and under active development. Features may change or break between versions.
 
 ## Installation
 
@@ -54,6 +58,24 @@ aoc test process
 ```
 
 Run tests for the AO process component.
+
+### Generate Tests
+
+```bash
+aoc generate test [--model MODEL]
+```
+
+Generate test code for AO Counter components:
+
+- Currently supports test generation only
+- Optional `--model` or `-m` flag to specify the AI model:
+  - `anthropic` - Use Anthropic's Claude model
+  - `openai` - Use OpenAI's GPT model
+  - `auto` (default) - Automatically selects based on available API keys
+
+Requires either `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` environment variable to be set.
+
+You can set the env using `export ANTHROPIC_API_KEY=<key>` or `export OPENAI_API_KEY=<key>`.
 
 ### Version
 
