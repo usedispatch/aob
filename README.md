@@ -44,6 +44,9 @@ Start the frontend development server.
 ### Deploy Components
 
 ```bash
+# First, set your wallet environment variable
+export WALLET_JSON="$(cat ~/.aos.json)"
+# Then deploy process
 aoc deploy <component>
 ```
 
@@ -62,6 +65,9 @@ Run tests for the AO process component.
 ### Generate Tests
 
 ```bash
+# First, set the model api key
+export ANTHROPIC_API_KEY=<key>
+# Then generate tests
 aoc generate test [--model MODEL]
 ```
 
