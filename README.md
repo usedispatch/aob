@@ -98,4 +98,4 @@ Display the current version of AOX CLI.
 
 ## License
 
-[MIT License](LICENSE)
+[MIT License](LICENSE.md)
