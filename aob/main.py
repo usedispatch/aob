@@ -72,9 +72,18 @@ def init(
         "-p",
         help="Custom installation path (defaults to current directory)",
     ),
+    sqlite: bool = typer.Option(
+    False,
+    "--sqlite",
+    help="Initialize with SQLite template ",
+    ),
 ):
     """Initialize a new AO Counter project."""
-    repo_url = "https://github.com/usedispatch/ao-counter"
+    repo_url = (
+        "https://github.com/usedispatch/sqlite-template.git"
+        if sqlite
+        else "https://github.com/usedispatch/ao-counter"
+    )
     if path:
         try:
             # Create directory if it doesn't exist
@@ -88,7 +97,7 @@ def init(
         target_dir = Path.cwd()
     log_verbose(f"Target directory: {target_dir}")
     # Show installation header with path info
-    console.print("\n[bold blue]AO Counter Installation[/bold blue]")
+    console.print("\n[bold blue]AO Project Installation[/bold blue]")
     console.print("└─ [dim]Repository:[/dim] [cyan]{}[/cyan]".format(repo_url))
     console.print(
         "└─ [dim]Installing to:[/dim] [green]{}[/green]\n".format(target_dir.absolute())
@@ -192,9 +201,15 @@ def init(
                 log_verbose(f"Removing .git directory: {git_dir}")
                 shutil.rmtree(git_dir)
 
+            success_message = (
+                "[green bold]✓ AO SQLite template installed successfully!\n\n"
+                if sqlite
+                else "[green bold]✓ AO Starter app installed successfully!\n\n"
+            )
+
         # Show success message
         show_success_panel(
-            "[green bold]✓ AO Starter app installed successfully!\n\n"
+            success_message +
             "[white]Getting Started:[/white]\n"
             "1. Run [cyan]aob dev[/cyan] to start the frontend dev server\n"
             "2. Run [cyan]aob deploy process[/cyan] to deploy the process\n"
