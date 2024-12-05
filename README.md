@@ -28,7 +28,7 @@ Clones and sets up a new AO Counter project in the current directory. Optionally
 aoc build <component>
 ```
 
-Build AO Counter components:
+Build AO application components:
 
 - `aoc build process` - Build the AO process
 - `aoc build frontend` - Build the frontend application
@@ -50,7 +50,7 @@ export WALLET_JSON="$(cat ~/.aos.json)"
 aoc deploy <component>
 ```
 
-Deploy AO Counter components:
+Deploy AO application components:
 
 - `aoc deploy process` - Deploy the AO process
 
@@ -71,7 +71,7 @@ export ANTHROPIC_API_KEY=<key>
 aoc generate test [--model MODEL]
 ```
 
-Generate test code for AO Counter components:
+Generate test code for AO application components:
 
 - Currently supports test generation only
 - Optional `--model` or `-m` flag to specify the AI model:
