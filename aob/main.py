@@ -54,7 +54,7 @@ def main(
 
 
 def get_repo_path() -> Path:
-    """Get the path to the AO Counter repository in current directory."""
+    """Get the path to the AO application repository in current directory."""
     return Path.cwd() / "ao-counter"
 
 
@@ -78,24 +78,42 @@ def init(
     help="Initialize with SQLite template ",
     ),
 ):
-    """Initialize a new AO Counter project."""
+    """Initialize a new AO App """
+    
+     # Prompt for project name
+    project_name = typer.prompt("Enter your project name").strip()
+    
+    # Validate project name
+    if not project_name:
+        show_error_panel("Project name cannot be empty")
+    if not project_name.replace("-", "").replace("_", "").isalnum():
+        show_error_panel("Project name can only contain letters, numbers, hyphens and underscores")
+
+    if path:
+        base_dir = Path(path)
+    else:
+        base_dir = Path.cwd()
+    
+    target_dir = base_dir / project_name
+
     repo_url = (
         "https://github.com/usedispatch/sqlite-template.git"
         if sqlite
         else "https://github.com/usedispatch/ao-counter"
     )
-    if path:
-        try:
-            # Create directory if it doesn't exist
-            os.makedirs(path, exist_ok=True)
-            # Change to that directory
-            os.chdir(path)
-            target_dir = Path.cwd()
-        except OSError as e:
-            show_error_panel("Failed to create or access target directory", str(e))
-    else:
-        target_dir = Path.cwd()
     log_verbose(f"Target directory: {target_dir}")
+    # if path:
+    #     try:
+    #         # Create directory if it doesn't exist
+    #         os.makedirs(path, exist_ok=True)
+    #         # Change to that directory
+    #         os.chdir(path)
+    #         target_dir = Path.cwd()
+    #     except OSError as e:
+    #         show_error_panel("Failed to create or access target directory", str(e))
+    # else:
+    #     target_dir = Path.cwd()
+    # log_verbose(f"Target directory: {target_dir}")
     # Show installation header with path info
     console.print("\n[bold blue]AO Project Installation[/bold blue]")
     console.print("└─ [dim]Repository:[/dim] [cyan]{}[/cyan]".format(repo_url))
@@ -104,15 +122,15 @@ def init(
     )
     try:
         # Check existing installation
-        if target_dir.exists() and any(target_dir.iterdir()):
-            show_error_panel(
-                "Directory not empty",
-                f"The target directory '{target_dir.absolute()}' is not empty. Please choose an empty directory for installation."
-            )
-            raise typer.Exit(1)
-
-        # Create directory structure
-        target_dir.mkdir(parents=True, exist_ok=True)
+        if target_dir.exists():
+            if any(target_dir.iterdir()):
+                show_error_panel(
+                    "Directory not empty",
+                    f"The target directory '{target_dir.absolute()}' already exists and is not empty."
+                )
+                raise typer.Exit(1)
+        else:
+            target_dir.mkdir(parents=True)
 
         progress_columns = [
             SpinnerColumn(),
@@ -228,7 +246,7 @@ def deploy(
     component: str = typer.Argument(..., help="Component to deploy (process/frontend)"),
     wallet: str = typer.Option(None, "--wallet", "-w", help="Path to wallet file for deployment")
 ):
-    """Deploy AO Counter components (process or frontend)."""
+    """Deploy AO application components (process or frontend)."""
     if component not in ["process", "frontend"]:
         show_error_panel("Invalid component. Must be either 'process' or 'frontend'")
 
@@ -240,12 +258,12 @@ def deploy(
 
     
 
-    # Check if we're in a valid AO Counter project directory
+    
     package_json = Path.cwd() / "package.json"
     if not package_json.exists():
         show_error_panel(
             "No package.json found in current directory.\n"
-            "Make sure you're in the root directory of an AO Counter project."
+            "Make sure you're in the root directory of an AO application."
         )
     try:
         if component == "process":
@@ -256,7 +274,7 @@ def deploy(
                 log_verbose(f"Wallet loaded from: {wallet}")
             except Exception as e:
                 show_error_panel("Failed to read wallet file", str(e))
-            console.print("\n[bold blue]Deploying AO Counter Process[/bold blue]")
+            console.print("\n[bold blue]Deploying AO Application Process[/bold blue]")
             command = "deploy:process"
             success_message = "Process deployed successfully!"
             process, master = run_command_with_pty(f"yarn {command}")
@@ -332,22 +350,22 @@ def deploy(
 
 @app.command(name="test")
 def test(component: str = typer.Argument(..., help="Component to test (process)")):
-    """Run tests for AO Counter components (process)."""
+    """Run tests for AO application components (process)."""
     if component != "process":
         show_error_panel(
             "Invalid component. Currently only 'process' testing is supported"
         )
 
-    # Check if we're in a valid AO Counter project directory
+    
     package_json = Path.cwd() / "package.json"
     if not package_json.exists():
         show_error_panel(
             "No package.json found in current directory.\n"
-            "Make sure you're in the root directory of an AO Counter project."
+            "Make sure you're in the root directory of an AO application."
         )
 
     try:
-        console.print("\n[bold blue]Running AO Counter Process Tests[/bold blue]")
+        console.print("\n[bold blue]Running AO Application Process Tests[/bold blue]")
         test_dir = Path.cwd() / "test"
         node_modules = test_dir / "node_modules"
 
@@ -414,7 +432,7 @@ def dev(
         help="Component to run in development mode (currently only supports 'frontend')",
     )
 ):
-    """Start the AO Counter development server for the specified component."""
+    """Start the AO application development server for the specified component."""
     # Validate component
     if component.lower() != "frontend":
         show_error_panel(
@@ -427,13 +445,13 @@ def dev(
     if not package_json.exists():
         show_error_panel(
             "No package.json found in current directory.\n"
-            "Make sure you're in the root directory of an AO Counter project."
+            "Make sure you're in the root directory of an AO application project."
         )
         return
 
     try:
         console.print(
-            f"\n[bold blue]Starting AO Counter {component.title()} Development Server[/bold blue]"
+            f"\n[bold blue]Starting AO application {component.title()} Development Server[/bold blue]"
         )
 
         # Create a pseudo-terminal
@@ -472,7 +490,7 @@ def dev(
 def build(
     component: str = typer.Argument(..., help="Component to build (process/frontend)")
 ):
-    """Build AO Counter components (process or frontend)."""
+    """Build AO application components (process or frontend)."""
     if component not in ["process", "frontend"]:
         console.print(
             Panel.fit(
@@ -483,23 +501,23 @@ def build(
         )
         raise typer.Exit(1)
 
-    # Check if we're in a valid AO Counter project directory
+    
     package_json = Path.cwd() / "package.json"
     if not package_json.exists():
         show_error_panel(
             "No package.json found in current directory.\n"
-            "Make sure you're in the root directory of an AO Counter project."
+            "Make sure you're in the root directory of an AO application project."
         )
 
     try:
         if component == "process":
             # Process deployment logic
-            console.print("\n[bold blue]Building AO Counter Process[/bold blue]")
+            console.print("\n[bold blue]Building AO application Process[/bold blue]")
             command = "build:process"
             success_message = "Process built successfully!"
         else:
             # Frontend deployment logic
-            console.print("\n[bold blue]Deploying AO Counter Frontend[/bold blue]")
+            console.print("\n[bold blue]Building AO application Frontend[/bold blue]")
             command = "build:frontend"
             success_message = "Frontend built successfully!"
 
@@ -527,18 +545,18 @@ def generate(
     component: str = typer.Argument(..., help="Component to generate (test)"),
      model: str = typer.Option("auto", "--model", "-m", help="Model to use for generation ('anthropic' or 'openai', defaults to auto)")
 ):
-    """Generate code for AO Counter components (test)."""
+    """Generate code for AO application components (test)."""
     if component != "test":
         show_error_panel(
             "Invalid component. Currently only 'test' generation is supported"
         )
 
-        # Check if we're in a valid AO Counter project directory
+    
     package_json = Path.cwd() / "package.json"
     if not package_json.exists():
         show_error_panel(
             "No package.json found in current directory.\n"
-            "Make sure you're in the root directory of an AO project."
+            "Make sure you're in the root directory of an AO application."
         )
 
     try:
@@ -738,7 +756,7 @@ def run_command_with_pty(command: str) -> subprocess.Popen:
 
 
 if __name__ == "__main__":
-    show_welcome_message()
+    
     app()
 
 
