@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aob"
-version = "0.2.3"
+version = "0.2.4"
 description = "CLI tool for managing and running AO Counter"
 authors = ["Pratik <pratik@arweave.org>"]
 

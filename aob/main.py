@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
+import json
 
 import typer
 from rich.console import Console
@@ -102,6 +103,7 @@ def init(
         else "https://github.com/usedispatch/ao-counter"
     )
     log_verbose(f"Target directory: {target_dir}")
+
     # if path:
     #     try:
     #         # Create directory if it doesn't exist
@@ -357,6 +359,7 @@ def test(component: str = typer.Argument(..., help="Component to test (process)"
         )
 
     
+    
     package_json = Path.cwd() / "package.json"
     if not package_json.exists():
         show_error_panel(
@@ -552,6 +555,8 @@ def generate(
         )
 
     
+    is_sqlite = is_sqlite_template()
+    
     package_json = Path.cwd() / "package.json"
     if not package_json.exists():
         show_error_panel(
@@ -595,9 +600,9 @@ def generate(
     
         # prompt_response = antrophic_generate_test_code(lua_code, existing_tests)
         if selected_model == "anthropic":
-            prompt_response = antrophic_generate_test_code(lua_code, existing_tests)
+            prompt_response = antrophic_generate_test_code(lua_code, existing_tests,is_sqlite)
         else:
-            prompt_response = openai_generate_test_code(lua_code, existing_tests)
+            prompt_response = openai_generate_test_code(lua_code, existing_tests,is_sqlite)
 
         # try:
         #     analysis_start = prompt_response.find("<code_analysis>")
@@ -616,7 +621,7 @@ def generate(
             generated_tests_end = prompt_response.find("</new_tests>")
             if generated_tests_start != -1 and generated_tests_end != -1:
                 generated_tests = prompt_response[generated_tests_start + len("<new_tests>"):generated_tests_end].strip()
-                console.print(f"\n[bold blue]Generated Tests[/bold blue]")
+                # console.print(f"\n[bold blue]Generated Tests[/bold blue]")
                 # console.print(Panel.fit(generated_tests, border_style="blue"))
                 if generated_tests == "None":
                     show_error_panel("No new tests generated")
@@ -753,10 +758,20 @@ def run_command_with_pty(command: str) -> subprocess.Popen:
     os.close(slave)
     return process, master
 
+def is_sqlite_template() -> bool:
+    """Check if the current project uses the SQLite template."""
+    try:
+        package_json = Path.cwd() / "package.json"
+        
+        with open(package_json) as f:
+            data = json.loads(f.read())
+            deploy_script = data.get('scripts', {}).get('deploy:process', '')
+            return deploy_script == 'lua process/scripts/replace.lua && aoform apply -f processes.yaml'
+    except (FileNotFoundError, json.JSONDecodeError):
+        return False
 
 
 if __name__ == "__main__":
-    
     app()
 
 
