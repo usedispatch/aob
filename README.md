@@ -17,7 +17,7 @@ pip install aob
 ### Initialize Project
 
 ```bash
-aoc init [--sqlite]
+aob init [--sqlite]
 ```
 
 Clones and sets up a new AO Counter project in the current directory. Optionally specify a custom installation path.
@@ -29,7 +29,7 @@ Options:
 ### Build Components
 
 ```bash
-aoc build <component>
+aob build <component>
 ```
 
 Build AO application components:
@@ -40,7 +40,7 @@ Build AO application components:
 ### Development Mode
 
 ```bash
-aoc dev frontend
+aob dev frontend
 ```
 
 Start the frontend development server.
@@ -51,7 +51,7 @@ Start the frontend development server.
 # First, set your wallet environment variable
 export WALLET_JSON="$(cat ~/.aos.json)"
 # Then deploy process
-aoc deploy <component>
+aob deploy <component>
 ```
 
 Deploy AO application components:
@@ -61,7 +61,7 @@ Deploy AO application components:
 ### Run Tests
 
 ```bash
-aoc test process
+aob test process
 ```
 
 Run tests for the AO process component.
@@ -72,7 +72,7 @@ Run tests for the AO process component.
 # First, set the model api key
 export ANTHROPIC_API_KEY=<key>
 # Then generate tests
-aoc generate test [--model MODEL]
+aob generate test [--model MODEL]
 ```
 
 Generate test code for AO application components:
@@ -90,7 +90,7 @@ You can set the env using `export ANTHROPIC_API_KEY=<key>` or `export OPENAI_API
 ### Version
 
 ```bash
-aoc version
+aob version
 ```
 
 Display the current version of AOX CLI.
