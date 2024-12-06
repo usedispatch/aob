@@ -1,4 +1,4 @@
-# AOC CLI
+# AOB CLI
 
 [![Status](https://img.shields.io/badge/Status-Alpha-yellow.svg)]()
 
@@ -9,7 +9,7 @@ A command-line interface tool for scaffolding, deploying, and managing AO applic
 ## Installation
 
 ```bash
-pip install aoc
+pip install aob
 ```
 
 ## Commands
@@ -17,10 +17,14 @@ pip install aoc
 ### Initialize Project
 
 ```bash
-aoc init
+aoc init [--sqlite]
 ```
 
 Clones and sets up a new AO Counter project in the current directory. Optionally specify a custom installation path.
+
+Options:
+
+- `--sqlite`: Initialize project with SQLite database template instead of default counter template
 
 ### Build Components
 
