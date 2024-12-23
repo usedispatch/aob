@@ -21,12 +21,12 @@ from rich.progress import (
 import ell
 import anthropic
 
-from aob.prompts.generate_test import antrophic_generate_test_code, openai_generate_test_code
+from aob.prompts.generate_test import  claude_generate_test_code, openai_generate_test_code
 TOOL_VERSION = "0.0.1"
 VERBOSE_MODE = False
 
 
-ell.init(verbose=False)
+ell.init(verbose=True, store=("./logdir"), autocommit=True)
 client = anthropic.Anthropic()
 
 
@@ -589,31 +589,43 @@ def generate(
         
         # Read Lua code from output.lua
         lua_code = read_lua_code()
+        
         if not lua_code:
             show_error_panel("No Lua code found in output.lua")
             
         # Read existing test code
         existing_tests = read_existing_tests()
+    
         if not existing_tests:
             show_error_panel("No existing test code found in test/src/index.ts")
     
     
         # prompt_response = antrophic_generate_test_code(lua_code, existing_tests)
         if selected_model == "anthropic":
-            prompt_response = antrophic_generate_test_code(lua_code, existing_tests,is_sqlite)
+            prompt_response = claude_generate_test_code(lua_code, existing_tests,is_sqlite)
         else:
             prompt_response = openai_generate_test_code(lua_code, existing_tests,is_sqlite)
 
-        # try:
-        #     analysis_start = prompt_response.find("<code_analysis>")
-        #     analysis_end = prompt_response.find("</code_analysis>") 
-        #     if analysis_start != -1 and analysis_end != -1:
-        #         analysis = prompt_response[analysis_start + len("<code_analysis>"):analysis_end].strip()
-        #         # Display analysis in CLI
-        #         console.print("\n[bold blue]Code Analysis[/bold blue]")
-        #         console.print(Panel.fit(analysis, border_style="blue"))
-        # except Exception as e:
-        #     show_error_panel(f"An error occurred in code analysis: {str(e)}")
+       
+        # Extract and display test planning
+        try:
+            planning_end = prompt_response.find("</test_planning>")
+            if planning_end != -1:
+                test_planning = prompt_response[0:planning_end].strip()
+                console.print("\n[bold blue]Test Planning[/bold blue]")
+                console.print(Panel.fit(test_planning, border_style="blue"))
+                
+                # Ask for user approval
+                if not typer.confirm("\nDo you want to proceed with generating these tests?"):
+                    console.print("[yellow]Test generation cancelled by user[/yellow]")
+                    raise typer.Exit(0)
+            else:
+                show_error_panel("Could not find test planning in the response")
+
+        except typer.Exit:
+            raise
+        except Exception as e:
+            show_error_panel(f"An error occurred in test planning: {str(e)}")
 
 
         try:
@@ -654,6 +666,8 @@ def generate(
             "Test Generation Complete"
         )
 
+    except typer.Exit:
+        raise
     except Exception as e:
         show_error_panel(f"An error occurred: {str(e)}")
 

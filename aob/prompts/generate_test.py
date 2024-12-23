@@ -1,6 +1,8 @@
 import ell
 import anthropic
-from .examples import simple_example,sqlite_example
+from .simple_example import simple_example
+from .sqlite_example import sqlite_example
+from .prompt_templates import TEST_GENERATION_PROMPT,SYSTEM_PROMPT
 
 
 client = anthropic.Anthropic()
@@ -10,81 +12,151 @@ def antrophic_generate_test_code(lua_code: str,existing_tests: str,sqlite: bool 
     example_text = sqlite_example if sqlite else simple_example
     message = client.messages.create(
     model="claude-3-5-sonnet-20241022",
-    max_tokens=1000,
+    max_tokens=2000,
     temperature=0,
+    system=SYSTEM_PROMPT,
     messages=[
         {
             "role": "user",
             "content": [
                 {
                     "type": "text",
-                    "text": example_text,
+                    "text": example_text
                 },
                 {
                     "type": "text",
-                    "text": f"You are an expert test generator specializing in analyzing Lua code and generating corresponding TypeScript tests. Your task is to create new, comprehensive tests for handlers in the provided Lua code without duplicating existing tests.\n\nFirst, examine the following Lua code:\n\n<lua_code>\n{lua_code}\n</lua_code>\n\nNow, review the existing TypeScript tests:\n\n<existing_tests>\n{existing_tests}\n</existing_tests>\n\nYour goal is to generate new TypeScript tests for the Lua code provided. Follow these guidelines:\n\n1. Focus on testing handlers in the Lua code.\n2. Ensure tests are comprehensive but do not duplicate existing tests.\n3. Follow TypeScript and existing test patterns.\n4. Be idempotent - only add new tests for new Lua code, not for code that already has tests.\n5. Maintain the existing test file structure.\n\nGenerate only the new test code in TypeScript format. Do not include any explanations, comments, or anything other than the TypeScript test code itself. If the already provided test's are fulfilling output None.\n\nProvide your output in the following format:\n\n<new_tests>\n[Insert only the new TypeScript test code here]\n</new_tests>\n\nRemember to analyze the existing tests carefully to avoid duplication and ensure you're only adding tests for new handlers "
+                    "text": TEST_GENERATION_PROMPT.format(lua_code=lua_code, existing_tests=existing_tests)
+                },
+                {
+                    "role": "assistant",
+                    "content": [
+                        {
+                    "type": "text",
+                    "text": "<test_planning>"
                 }
             ]
         }
+            ]
+        },
     ]
     )
-    
+    print(message.content[0].text);
     return message.content[0].text
 
 
-
-
-
-@ell.simple(model='gpt-4',max_tokens=1000,temperature=0,client=client)
-def openai_generate_test_code(lua_code: str,existing_tests: str,sqlite: bool = False) -> str:
+@ell.simple(model='claude-3-5-sonnet-20241022', client=client,max_tokens=2000)
+def claude_generate_test_code(lua_code: str,existing_tests: str,sqlite: bool = False) -> str:
     example_text = sqlite_example if sqlite else simple_example
+    user_prompt = TEST_GENERATION_PROMPT.format(LUA_CODE=lua_code, EXISTING_TESTS=existing_tests)
     return [
+        ell.system(SYSTEM_PROMPT),
         ell.user(example_text),
-        ell.user(f"You are an expert test generator specializing in analyzing Lua code and generating corresponding TypeScript tests. Your task is to create new, comprehensive tests for handlers in the provided Lua code without duplicating existing tests.\n\nFirst, examine the following Lua code:\n\n<lua_code>\n{lua_code}\n</lua_code>\n\nNow, review the existing TypeScript tests:\n\n<existing_tests>\n{existing_tests}\n</existing_tests>\n\nYour goal is to generate new TypeScript tests for the Lua code provided. Follow these guidelines:\n\n1. Focus on testing handlers in the Lua code.\n2. Ensure tests are comprehensive but do not duplicate existing tests.\n3. Follow TypeScript and existing test patterns.\n4. Be idempotent - only add new tests for new Lua code, not for code that already has tests.\n5. Maintain the existing test file structure.\n\nGenerate only the new test code in TypeScript format. Do not include any explanations, comments, or anything other than the TypeScript test code itself. If the already provided test's are fulfilling output None.\n\nProvide your output in the following format:\n\n<new_tests>\n[Insert only the new TypeScript test code here]\n</new_tests>\n\nRemember to analyze the existing tests carefully to avoid duplication and ensure you're only adding tests for new handlers ")
+        ell.user(user_prompt),
+        ell.assistant("<test_planning>")
     ]
 
 
-# @ell.simple(model='claude-3-5-sonnet-20241022', client=client,max_tokens=2000)
-# def generate_test_code(lua_code: str, existing_tests: str) -> str:
-#     prompt = f"""
-# Your task is to create new, comprehensive tests for handlers in the provided Lua code without duplicating existing tests. 
-# You are an expert test generator specializing in analyzing Lua code and generating corresponding TypeScript tests. 
-# First, examine the following Lua code:
 
-# <lua_code>
-# {lua_code}
-# </lua_code>
+@ell.simple(model='gpt-4',max_tokens=2000,temperature=0)
+def openai_generate_test_code(lua_code: str,existing_tests: str,sqlite: bool = False) -> str:
+    example_text = sqlite_example if sqlite else simple_example
+    user_prompt = TEST_GENERATION_PROMPT.format(LUA_CODE=lua_code, EXISTING_TESTS=existing_tests)
+    return [
+        ell.system(SYSTEM_PROMPT),
+        ell.user(example_text),
+        ell.user(user_prompt),
+        ell.assistant("<test_planning>")
+    ]
 
-# Now, review the existing TypeScript tests:
 
-# <existing_tests>
-# {existing_tests}
-# </existing_tests>
 
-# Your goal is to generate new TypeScript tests only for new handlers in the Lua code provided. Follow these guidelines:
 
-# 1. Focus exclusively on testing new handlers in the Lua code that don't have corresponding tests.
-# 2. Ensure new tests are comprehensive and follow TypeScript and existing test patterns.
-# 3. Maintain the existing test file structure.
-# 4. Do not generate any tests for handlers that already have tests.
+def generate_chunked_test_code(lua_code: str, existing_tests: str, sqlite: bool = False, part: int = 1, previous_parts: list[str] = None) -> str:
+    """
+    Generate test code in chunks, where each chunk stays within token limits.
+    The LLM will number its output as <part X of Y> and continue in subsequent calls.
+    
+    Args:
+        lua_code: The Lua code to generate tests for
+        existing_tests: Existing TypeScript tests
+        sqlite: Whether to use sqlite example
+        part: Current part number to generate (default 1)
+        previous_parts: List of test code from previous parts
+    
+    Returns:
+        Test code for the requested part
+    """
+    example_text = sqlite_example if sqlite else simple_example
+    previous_parts = previous_parts or []
+    
+    context = ""
+    if previous_parts:
+        context = "\nPrevious parts generated:\n"
+        for i, prev_part in enumerate(previous_parts, 1):
+            context += f"\n<part {i}>\n{prev_part}\n</part {i}>"
+    
+    chunked_prompt = f"""
+{TEST_GENERATION_PROMPT}
 
-# Before generating new tests, carefully analyze the Lua code and existing tests. Wrap your analysis in <code_analysis> tags:
+{context}
 
-# 1. List all handlers in the Lua code, numbering them.
-# 2. List all handlers in the existing tests, numbering them.
-# 3. Compare the two lists and identify new handlers that need testing.
-# 4. For each new handler, outline its functionality and potential test cases.
+IMPORTANT: Due to token limits, split your output into multiple parts.
+- Each part should be small enough to fit within output token limits
+- Number each part as <part X of Y> at the start
+- This is part {part} - if there are more parts needed, end with "Continue with next part"
+- If this is the final part, do not include "Continue with next part"
+- Ensure your new tests are consistent with and build upon the previous parts
+- Do not repeat tests from previous parts
+"""
+    return [
+        ell.user(example_text),
+        ell.user(chunked_prompt.format(lua_code=lua_code, existing_tests=existing_tests))
+    ]
 
-# After your analysis, generate only the new test code in TypeScript format. Do not include any explanations, comments, or anything other than the TypeScript test code itself. If no new tests are needed, output "None".
-
-# Provide your output in the following format:
-
-# <new_tests>
-# [Insert only the new TypeScript test code here, or "None" if no new tests are needed]
-# </new_tests>
-
-# Remember to analyze the existing tests carefully to avoid duplication and ensure you're only adding tests for new handlers."""
-
-#     return prompt
+def generate_complete_test_code(lua_code: str, existing_tests: str, sqlite: bool = False) -> str:
+    """
+    Generate complete test code by making multiple LLM calls if needed.
+    Handles the chunked responses and combines them.
+    
+    Args:
+        lua_code: The Lua code to generate tests for
+        existing_tests: Existing TypeScript tests
+        sqlite: Whether to use sqlite example
+    
+    Returns:
+        Complete combined test code from all parts
+    """
+    all_parts = []
+    current_part = 1
+    
+    while True:
+        response = openai_generate_test_code(
+            lua_code=lua_code,
+            existing_tests=existing_tests,
+            sqlite=sqlite,
+            system_prompt=generate_chunked_test_code(
+                lua_code=lua_code,
+                existing_tests=existing_tests,
+                sqlite=sqlite,
+                part=current_part,
+                previous_parts=all_parts
+            )
+        )
+        
+        # Extract test code from the response
+        if "<new_tests>" in response:
+            test_code = response.split("<new_tests>")[1].split("</new_tests>")[0].strip()
+            if test_code.lower() != "none":
+                all_parts.append(test_code)
+        
+        # Check if we need to continue
+        if "Continue with next part" not in response:
+            break
+            
+        current_part += 1
+        if current_part > 10:  # Safety limit to prevent infinite loops
+            break
+            
+    return "\n".join(all_parts) if all_parts else "None"
 
 
