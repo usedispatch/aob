@@ -589,13 +589,13 @@ def generate(
         
         # Read Lua code from output.lua
         lua_code = read_lua_code()
-        print(f"Lua code: {lua_code}")
+        
         if not lua_code:
             show_error_panel("No Lua code found in output.lua")
             
         # Read existing test code
         existing_tests = read_existing_tests()
-        print(f"Existing tests: {existing_tests}")
+    
         if not existing_tests:
             show_error_panel("No existing test code found in test/src/index.ts")
     
@@ -609,10 +609,9 @@ def generate(
        
         # Extract and display test planning
         try:
-            planning_start = prompt_response.find("<test_planning>")
             planning_end = prompt_response.find("</test_planning>")
-            if planning_start != -1 and planning_end != -1:
-                test_planning = prompt_response[planning_start + len("<test_planning>"):planning_end].strip()
+            if planning_end != -1:
+                test_planning = prompt_response[0:planning_end].strip()
                 console.print("\n[bold blue]Test Planning[/bold blue]")
                 console.print(Panel.fit(test_planning, border_style="blue"))
                 

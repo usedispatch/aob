@@ -46,22 +46,26 @@ def antrophic_generate_test_code(lua_code: str,existing_tests: str,sqlite: bool 
 
 @ell.simple(model='claude-3-5-sonnet-20241022', client=client,max_tokens=2000)
 def claude_generate_test_code(lua_code: str,existing_tests: str,sqlite: bool = False) -> str:
-    SYSTEM_PROMPT
     example_text = sqlite_example if sqlite else simple_example
+    user_prompt = TEST_GENERATION_PROMPT.format(LUA_CODE=lua_code, EXISTING_TESTS=existing_tests)
     return [
+        ell.system(SYSTEM_PROMPT),
         ell.user(example_text),
-        ell.user(TEST_GENERATION_PROMPT.format(lua_code=lua_code, existing_tests=existing_tests))
+        ell.user(user_prompt),
+        ell.assistant("<test_planning>")
     ]
 
 
 
 @ell.simple(model='gpt-4',max_tokens=2000,temperature=0)
 def openai_generate_test_code(lua_code: str,existing_tests: str,sqlite: bool = False) -> str:
-    SYSTEM_PROMPT
     example_text = sqlite_example if sqlite else simple_example
+    user_prompt = TEST_GENERATION_PROMPT.format(LUA_CODE=lua_code, EXISTING_TESTS=existing_tests)
     return [
+        ell.system(SYSTEM_PROMPT),
         ell.user(example_text),
-        ell.user(TEST_GENERATION_PROMPT.format(lua_code=lua_code, existing_tests=existing_tests))
+        ell.user(user_prompt),
+        ell.assistant("<test_planning>")
     ]
 
 

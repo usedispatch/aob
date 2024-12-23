@@ -24,12 +24,12 @@ TEST_GENERATION_PROMPT = '''
 Below are the inputs for your task. Use the system prompt for context.
 Lua Code:
 <lua_code>
-{{LUA_CODE}}
+{LUA_CODE}
 </lua_code>
 
 Existing TypeScript Tests:
 <existing_tests>
-{{EXISTING_TESTS}}
+{EXISTING_TESTS}
 </existing_tests>
 
 Your outputs should have the following format:
@@ -53,13 +53,13 @@ V0_TEST_GENERATION_PROMPT = '''You are an expert test generator specializing in 
 First, examine the following Lua code:
 
 <lua_code>
-{{LUA_CODE}}
+{LUA_CODE}
 </lua_code>
 
 Now, review the existing TypeScript tests:
 
 <existing_tests>
-{{EXISTING_TESTS}}
+{EXISTING_TESTS}
 </existing_tests>
 
 Your goal is to generate new TypeScript tests for the Lua code provided. Follow these guidelines:
