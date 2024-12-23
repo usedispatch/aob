@@ -21,12 +21,12 @@ from rich.progress import (
 import ell
 import anthropic
 
-from aob.prompts.generate_test import antrophic_generate_test_code, openai_generate_test_code
+from aob.prompts.generate_test import  claude_generate_test_code, openai_generate_test_code
 TOOL_VERSION = "0.0.1"
 VERBOSE_MODE = False
 
 
-ell.init(verbose=False)
+ell.init(verbose=True, store=("./logdir"), autocommit=True)
 client = anthropic.Anthropic()
 
 
@@ -602,7 +602,7 @@ def generate(
     
         # prompt_response = antrophic_generate_test_code(lua_code, existing_tests)
         if selected_model == "anthropic":
-            prompt_response = antrophic_generate_test_code(lua_code, existing_tests,is_sqlite)
+            prompt_response = claude_generate_test_code(lua_code, existing_tests,is_sqlite)
         else:
             prompt_response = openai_generate_test_code(lua_code, existing_tests,is_sqlite)
 
