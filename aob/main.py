@@ -23,7 +23,7 @@ import ell
 # print("++++++++++++++++++++++++++++ version check +++++++++++++++++++++++++++++")
 # print("anthropic version",anthropic.__version__)
 
-from prompts.generate_test import  claude_generate_test_code, openai_generate_test_code
+from .prompts.generate_test import  claude_generate_test_code, openai_generate_test_code
 # TODO(Pratik): get version from pyproject.toml
 TOOL_VERSION = "0.2.5"
 VERBOSE_MODE = False
