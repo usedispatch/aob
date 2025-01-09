@@ -19,15 +19,17 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 import ell
-import anthropic
+# import anthropic
+# print("++++++++++++++++++++++++++++ version check +++++++++++++++++++++++++++++")
+# print("anthropic version",anthropic.__version__)
 
-from aob.prompts.generate_test import  claude_generate_test_code, openai_generate_test_code
-TOOL_VERSION = "0.0.1"
+from prompts.generate_test import  claude_generate_test_code, openai_generate_test_code
+# TODO(Pratik): get version from pyproject.toml
+TOOL_VERSION = "0.2.5"
 VERBOSE_MODE = False
 
 
 ell.init(verbose=True, store=("./logdir"), autocommit=True)
-client = anthropic.Anthropic()
 
 
 

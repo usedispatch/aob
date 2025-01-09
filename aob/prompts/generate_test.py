@@ -1,50 +1,54 @@
 import ell
 import anthropic
+from ell.providers.anthropic import AnthropicProvider
+
 from .simple_example import simple_example
 from .sqlite_example import sqlite_example
 from .prompt_templates import TEST_GENERATION_PROMPT,SYSTEM_PROMPT
+print("++++++++++++++++++++++++++++ version check +++++++++++++++++++++++++++++")
+print("anthropic version",anthropic.__version__)
 
 
 client = anthropic.Anthropic()
 
-def antrophic_generate_test_code(lua_code: str,existing_tests: str,sqlite: bool = False) -> str:
-    client = anthropic.Anthropic()
-    example_text = sqlite_example if sqlite else simple_example
-    message = client.messages.create(
-    model="claude-3-5-sonnet-20241022",
-    max_tokens=2000,
-    temperature=0,
-    system=SYSTEM_PROMPT,
-    messages=[
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": example_text
-                },
-                {
-                    "type": "text",
-                    "text": TEST_GENERATION_PROMPT.format(lua_code=lua_code, existing_tests=existing_tests)
-                },
-                {
-                    "role": "assistant",
-                    "content": [
-                        {
-                    "type": "text",
-                    "text": "<test_planning>"
-                }
-            ]
-        }
-            ]
-        },
-    ]
-    )
-    print(message.content[0].text);
-    return message.content[0].text
+# def antrophic_generate_test_code(lua_code: str,existing_tests: str,sqlite: bool = False) -> str:
+#     client = anthropic.Anthropic()
+#     example_text = sqlite_example if sqlite else simple_example
+#     message = client.messages.create(
+#     model="claude-3-5-sonnet-20241022",
+#     max_tokens=2000,
+#     temperature=0,
+#     system=SYSTEM_PROMPT,
+#     messages=[
+#         {
+#             "role": "user",
+#             "content": [
+#                 {
+#                     "type": "text",
+#                     "text": example_text
+#                 },
+#                 {
+#                     "type": "text",
+#                     "text": TEST_GENERATION_PROMPT.format(lua_code=lua_code, existing_tests=existing_tests)
+#                 },
+#                 {
+#                     "role": "assistant",
+#                     "content": [
+#                         {
+#                     "type": "text",
+#                     "text": "<test_planning>"
+#                 }
+#             ]
+#         }
+#             ]
+#         },
+#     ]
+#     )
+#     print(message.content[0].text);
+#     return message.content[0].text
 
 
-@ell.simple(model='claude-3-5-sonnet-20241022', client=client,max_tokens=2000)
+@ell.simple(model='claude-3-5-sonnet-20241022',client=client,max_tokens=2000)
 def claude_generate_test_code(lua_code: str,existing_tests: str,sqlite: bool = False) -> str:
     example_text = sqlite_example if sqlite else simple_example
     user_prompt = TEST_GENERATION_PROMPT.format(LUA_CODE=lua_code, EXISTING_TESTS=existing_tests)
