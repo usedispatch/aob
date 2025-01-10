@@ -7,7 +7,7 @@ import subprocess
 import time
 from pathlib import Path
 import json
-
+import tomllib 
 import typer
 from rich.console import Console
 from rich.panel import Panel
@@ -19,13 +19,22 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 import ell
-# import anthropic
-# print("++++++++++++++++++++++++++++ version check +++++++++++++++++++++++++++++")
-# print("anthropic version",anthropic.__version__)
+
 
 from .prompts.generate_test import  claude_generate_test_code, openai_generate_test_code
+
+def get_tool_version() -> str:
+    """Get the tool version from pyproject.toml."""
+    try:
+        with open(Path(__file__).parent.parent / "pyproject.toml", "rb") as f:
+            pyproject = tomllib.load(f)
+            return pyproject["tool"]["poetry"]["version"]
+    except Exception as e:
+        log_verbose(f"Failed to read version from pyproject.toml: {e}")
+        return "unknown"
+
 # TODO(Pratik): get version from pyproject.toml
-TOOL_VERSION = "0.2.5"
+TOOL_VERSION = get_tool_version()
 VERBOSE_MODE = False
 
 
@@ -64,6 +73,7 @@ def get_repo_path() -> Path:
 @app.command(name="version")
 def version():
     """Display the current version of AOB CLI."""
+    ensure_ao_project_directory("version")
     console.print(f"AOB CLI version {TOOL_VERSION}")
 
 
@@ -105,20 +115,6 @@ def init(
         else "https://github.com/usedispatch/ao-counter"
     )
     log_verbose(f"Target directory: {target_dir}")
-
-    # if path:
-    #     try:
-    #         # Create directory if it doesn't exist
-    #         os.makedirs(path, exist_ok=True)
-    #         # Change to that directory
-    #         os.chdir(path)
-    #         target_dir = Path.cwd()
-    #     except OSError as e:
-    #         show_error_panel("Failed to create or access target directory", str(e))
-    # else:
-    #     target_dir = Path.cwd()
-    # log_verbose(f"Target directory: {target_dir}")
-    # Show installation header with path info
     console.print("\n[bold blue]AO Project Installation[/bold blue]")
     console.print("└─ [dim]Repository:[/dim] [cyan]{}[/cyan]".format(repo_url))
     console.print(
@@ -162,9 +158,26 @@ def init(
 
             if process.returncode != 0:
                 error = process.stderr.read().decode().strip()
-                raise subprocess.CalledProcessError(
-                    process.returncode, "git clone", error
-                )
+                if "not found" in error.lower():
+                    show_error_panel(
+                        "Repository not found",
+                        f"The template repository '{repo_url}' could not be found. Please check your internet connection."
+                    )
+                elif "permission denied" in error.lower():
+                    show_error_panel(
+                        "Permission denied",
+                        f"Unable to access the repository '{repo_url}'. Please check your permissions."
+                    )
+                elif "could not resolve host" in error.lower():
+                    show_error_panel(
+                        "Network error",
+                        "Failed to connect to GitHub. Please check your internet connection."
+                    )
+                else:
+                    show_error_panel(
+                        "Git clone failed",
+                        f"Failed to clone repository: {error}"
+                    )
 
             # Move contents from temp directory to target directory
             for item in temp_dir.iterdir():
@@ -233,10 +246,11 @@ def init(
         show_success_panel(
             success_message +
             "[white]Getting Started:[/white]\n"
-            "1. Run [cyan]aob dev[/cyan] to start the frontend dev server\n"
-            "2. Run [cyan]aob deploy process[/cyan] to deploy the process\n"
-            "3. Run [cyan]aob test process[/cyan] to run the process tests\n"
-            "4. Run [cyan]aob generate test[/cyan] to generate new tests",
+            f"1. Change to project directory: [cyan]cd {project_name}[/cyan]\n"
+            "2. Run [cyan]aob dev[/cyan] to start the frontend dev server\n"
+            "3. Run [cyan]aob deploy process[/cyan] to deploy the process\n"
+            "4. Run [cyan]aob test process[/cyan] to run the process tests\n"
+            "5. Run [cyan]aob generate test[/cyan] to generate new tests",
             "Installation Complete",
         )
     except subprocess.CalledProcessError as e:
@@ -245,24 +259,59 @@ def init(
         show_error_panel("An error occurred", str(e))
 
 
+@app.command(name="getting-started")
+def getting_started():
+    """Display getting started information for AO applications."""
+    ensure_ao_project_directory("getting-started")
+    show_success_panel(
+        "[white]Getting Started:[/white]\n"
+        "1. Run [cyan]aob dev[/cyan] to start the frontend dev server\n"
+        "2. Run [cyan]aob deploy process[/cyan] to deploy the process\n"
+        "3. Run [cyan]aob test process[/cyan] to run the process tests\n"
+        "4. Run [cyan]aob generate test[/cyan] to generate new tests",
+        "Getting Started Guide"
+    )
+
 @app.command(name="deploy")
 def deploy(
     component: str = typer.Argument(..., help="Component to deploy (process/frontend)"),
     wallet: str = typer.Option(None, "--wallet", "-w", help="Path to wallet file for deployment")
 ):
     """Deploy AO application components (process or frontend)."""
+    ensure_ao_project_directory("deploy")
     if component not in ["process", "frontend"]:
         show_error_panel("Invalid component. Must be either 'process' or 'frontend'")
 
-    if not os.path.exists(wallet):
+    if not wallet:
         show_error_panel(
-            f"Wallet file not found: {wallet}\n"
-            "Please provide a valid wallet path using --wallet option"
+            "Wallet path is required for deployment\n\n"
+            "[white]To deploy, you need to:[/white]\n"
+            "1. Create a wallet file if you don't have one:\n"
+            "   [cyan]npx -y @permaweb/wallet > wallet.json[/cyan]\n\n"
+            "2. Deploy using the wallet:\n"
+            f"   [cyan]aob deploy {component} --wallet wallet.json[/cyan]"
         )
 
-    
+        try:
+            with open(wallet, 'r') as f:
+                wallet_content = f.read()
+                # Verify it's valid JSON
+                json.loads(wallet_content)
+                os.environ['WALLET_JSON'] = wallet_content
+                log_verbose(f"Wallet loaded successfully from: {wallet}")
+        except json.JSONDecodeError:
+            show_error_panel(
+                "Invalid wallet file format\n\n"
+                "[white]The wallet file must be a valid JSON file.[/white]\n"
+                "Please ensure you're using a correctly formatted Arweave wallet file."
+            )
+        except Exception as e:
+            show_error_panel(
+                "Failed to read wallet file\n\n"
+                f"[white]Error: {str(e)}[/white]\n"
+                "Please check file permissions and try again."
+            )
 
-    
     package_json = Path.cwd() / "package.json"
     if not package_json.exists():
         show_error_panel(
@@ -355,6 +404,7 @@ def deploy(
 @app.command(name="test")
 def test(component: str = typer.Argument(..., help="Component to test (process)")):
     """Run tests for AO application components (process)."""
+    ensure_ao_project_directory("test")
     if component != "process":
         show_error_panel(
             "Invalid component. Currently only 'process' testing is supported"
@@ -438,6 +488,7 @@ def dev(
     )
 ):
     """Start the AO application development server for the specified component."""
+    ensure_ao_project_directory("dev")
     # Validate component
     if component.lower() != "frontend":
         show_error_panel(
@@ -496,6 +547,7 @@ def build(
     component: str = typer.Argument(..., help="Component to build (process/frontend)")
 ):
     """Build AO application components (process or frontend)."""
+    ensure_ao_project_directory("build")
     if component not in ["process", "frontend"]:
         console.print(
             Panel.fit(
@@ -551,6 +603,7 @@ def generate(
      model: str = typer.Option("auto", "--model", "-m", help="Model to use for generation ('anthropic' or 'openai', defaults to auto)")
 ):
     """Generate code for AO application components (test)."""
+    ensure_ao_project_directory("generate")
     if component != "test":
         show_error_panel(
             "Invalid component. Currently only 'test' generation is supported"
@@ -785,6 +838,40 @@ def is_sqlite_template() -> bool:
             return deploy_script == 'lua process/scripts/replace.lua && aoform apply -f processes.yaml'
     except (FileNotFoundError, json.JSONDecodeError):
         return False
+
+def is_ao_project_directory() -> bool:
+    """Check if current directory is a valid AO project directory."""
+    package_json = Path.cwd() / "package.json"
+    if not package_json.exists():
+        return False
+    
+    try:
+        with open(package_json) as f:
+            data = json.load(f)
+            # Check for key dependencies/scripts that indicate an AO project
+            scripts = data.get('scripts', {})
+            return any(cmd in scripts for cmd in [
+                'dev:frontend',
+                'build:process',
+                'deploy:process',
+                'test:process'
+            ])
+    except (FileNotFoundError, json.JSONDecodeError):
+        return False
+
+def ensure_ao_project_directory(command: str):
+    """Ensure the current directory is a valid AO project directory."""
+    if command.lower() == 'init':
+        return
+        
+    if not is_ao_project_directory():
+        show_error_panel(
+            "Not in an AO project directory\n\n"
+            "[white]Please ensure you are:[/white]\n"
+            "1. In the root directory of an AO project\n"
+            "2. The project was created using [cyan]aob init[/cyan]\n"
+            "3. The project has a valid package.json file"
+        )
 
 
 if __name__ == "__main__":

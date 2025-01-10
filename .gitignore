@@ -4,3 +4,6 @@ ao-counter
 aob/__pycache__
 aob/prompts/__pycache__
 dist
+.DS_Store
+logdir
+aob/logdir
