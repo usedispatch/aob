@@ -38,7 +38,7 @@ TOOL_VERSION = get_tool_version()
 VERBOSE_MODE = False
 
 
-ell.init(verbose=True, store=("./logdir"), autocommit=True)
+ell.init()
 
 
 

@@ -5,8 +5,6 @@ from ell.providers.anthropic import AnthropicProvider
 from .simple_example import simple_example
 from .sqlite_example import sqlite_example
 from .prompt_templates import TEST_GENERATION_PROMPT,SYSTEM_PROMPT
-print("++++++++++++++++++++++++++++ version check +++++++++++++++++++++++++++++")
-print("anthropic version",anthropic.__version__)
 
 
 client = anthropic.Anthropic()
