@@ -73,7 +73,6 @@ def get_repo_path() -> Path:
 @app.command(name="version")
 def version():
     """Display the current version of AOB CLI."""
-    ensure_ao_project_directory("version")
     console.print(f"AOB CLI version {TOOL_VERSION}")
 
 
