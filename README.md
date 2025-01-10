@@ -48,15 +48,21 @@ Start the frontend development server.
 ### Deploy Components
 
 ```bash
-# First, set your wallet environment variable
-export WALLET_JSON="$(cat ~/.aos.json)"
+
 # Then deploy process
-aob deploy <component>
+aob deploy -w <wallet_path> process
+```
+
+Example:
+
+```bash
+# Deploy process using local AOS wallet
+aob deploy -w ~/.aos.json process
 ```
 
 Deploy AO application components:
 
-- `aoc deploy process` - Deploy the AO process
+- `aob deploy process` - Deploy the AO process
 
 ### Run Tests
 
@@ -71,6 +77,8 @@ Run tests for the AO process component.
 ```bash
 # First, set the model api key
 export ANTHROPIC_API_KEY=<key>
+# Build the process (required before test generation for changed lua code)
+aob build process
 # Then generate tests
 aob generate test [--model MODEL]
 ```
