@@ -1,10 +1,11 @@
 import ell
 import anthropic
-from ell.providers.anthropic import AnthropicProvider
-
 from .simple_example import simple_example
 from .sqlite_example import sqlite_example
 from .prompt_templates import TEST_GENERATION_PROMPT,SYSTEM_PROMPT
+from openai import OpenAI
+
+openai_client = OpenAI(api_key="placeholder")  
 
 
 client = anthropic.Anthropic()
@@ -59,7 +60,7 @@ def claude_generate_test_code(lua_code: str,existing_tests: str,sqlite: bool = F
 
 
 
-@ell.simple(model='gpt-4',max_tokens=2000,temperature=0)
+@ell.simple(model='gpt-4',max_tokens=2000,temperature=0,client=openai_client)
 def openai_generate_test_code(lua_code: str,existing_tests: str,sqlite: bool = False) -> str:
     example_text = sqlite_example if sqlite else simple_example
     user_prompt = TEST_GENERATION_PROMPT.format(LUA_CODE=lua_code, EXISTING_TESTS=existing_tests)

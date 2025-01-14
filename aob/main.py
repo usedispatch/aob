@@ -34,11 +34,11 @@ def get_tool_version() -> str:
         return "unknown"
 
 # TODO(Pratik): get version from pyproject.toml
-TOOL_VERSION = get_tool_version()
+
 VERBOSE_MODE = False
 
 
-ell.init()
+
 
 
 
@@ -73,6 +73,7 @@ def get_repo_path() -> Path:
 @app.command(name="version")
 def version():
     """Display the current version of AOB CLI."""
+    TOOL_VERSION = get_tool_version()
     console.print(f"AOB CLI version {TOOL_VERSION}")
 
 
@@ -619,6 +620,7 @@ def generate(
         )
 
     try:
+        
             # Determine which API key is available
         anthropic_key = os.getenv("ANTHROPIC_API_KEY")
         openai_key = os.getenv("OPENAI_API_KEY")
@@ -653,11 +655,14 @@ def generate(
         if not existing_tests:
             show_error_panel("No existing test code found in test/src/index.ts")
     
+        ell.init(VERBOSE_MODE=False,verbose=False) 
     
         # prompt_response = antrophic_generate_test_code(lua_code, existing_tests)
         if selected_model == "anthropic":
             prompt_response = claude_generate_test_code(lua_code, existing_tests,is_sqlite)
         else:
+            from .prompts.generate_test import openai_client
+            openai_client.api_key = os.getenv("OPENAI_API_KEY")
             prompt_response = openai_generate_test_code(lua_code, existing_tests,is_sqlite)
 
        
