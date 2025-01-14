@@ -259,10 +259,10 @@ def init(
         show_error_panel("An error occurred", str(e))
 
 
-@app.command(name="getting-started")
+@app.command(name="info")
 def getting_started():
     """Display getting started information for AO applications."""
-    ensure_ao_project_directory("getting-started")
+    
     show_success_panel(
         "[white]Getting Started:[/white]\n"
         "1. Run [cyan]aob dev[/cyan] to start the frontend dev server\n"
