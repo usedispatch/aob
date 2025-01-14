@@ -34,8 +34,8 @@ aob build <component>
 
 Build AO application components:
 
-- `aoc build process` - Build the AO process
-- `aoc build frontend` - Build the frontend application
+- `aob build process` - Build the AO process
+- `aob build frontend` - Build the frontend application
 
 ### Development Mode
 
