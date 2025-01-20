@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aob"
-version = "0.2.7"
+version = "0.2.9"
 description = "CLI tool for managing and running AO Applications"
 authors = ["Pratik <pratik@arweave.org>"]
 
@@ -21,7 +21,7 @@ multi_line_output = 3
 line_length = 88
 
 [tool.poetry.dependencies]
-python = "^3.13"
+python = "^3.9"
 typer = "^0.12.5"
 rich = "^13.9.3"
 setuptools = "^75.3.0"
@@ -31,10 +31,10 @@ fastapi = "^0.115.6"
 uvicorn = "^0.34.0"
 watchfiles = "^1.0.3"
 httpx = "0.27.2"
-ell-ai = "^0.0.15"
+ell-ai = {extras = ["sqlite"], version = "^0.0.15"}
 anthropic = "^0.42.0"
 
-[tool.poetry.scripts]
+[tool.poetry.scripts]ao
 aob = "aob.main:app"
 
 
